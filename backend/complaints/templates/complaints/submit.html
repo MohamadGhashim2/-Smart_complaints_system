@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="tr" dir="ltr">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Şikâyet Gönder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: system-ui, Arial;
+            max-width: 720px;
+            margin: 24px auto;
+            padding: 0 12px;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        label {
+            display: block;
+            margin: 8px 0 4px;
+            font-weight: 600;
+        }
+
+        textarea,
+        select,
+        button {
+            width: 100%;
+            font-size: 16px;
+            padding: 10px;
+        }
+
+        textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+            margin-top: 12px;
+            background: #111;
+            color: #fff;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 160px;
+            gap: 8px;
+            align-items: end;
+        }
+
+        .muted {
+            color: #777;
+            font-size: 14px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #f7f7f7;
+            padding: 12px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Şikâyet Gönder</h1>
+    <p class="muted">Departman seçmezsen, sistem otomatik (AI) atayacak.</p>
+
+    <div class="card">
+        <label for="text">Şikâyet Metni</label>
+        <textarea id="text" placeholder="Şikâyetinizi buraya yazın... Örn: Hastanede randevu bulamıyorum."></textarea>
+
+        <label for="department">Department (İsteğe bağlı)</label>
+        <select id="department">
+            <option value="">— Seçme —</option>
+            <!-- سيتم ملؤها تلقائيًا من /api/v1/departments/ -->
+        </select>
+
+        <div class="row">
+            <div></div>
+            <button id="submitBtn">Gönder</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Sonuç / JSON</h3>
+        <pre id="result">Henüz bir istek gönderilmedi.</pre>
+    </div>
+
+    <script>
+         function getCookie(name) {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+            }
+            const csrftoken = getCookie('csrftoken');
+        const depsSelect = document.getElementById('department');
+        const resultEl = document.getElementById('result');
+        const textEl = document.getElementById('text');
+        const btn = document.getElementById('submitBtn');
+
+        // 1) جلب الأقسام لملء القائمة المنسدلة
+        fetch('/api/v1/departments/')
+            .then(r => r.json())
+            .then(list => {
+                (list || []).forEach(dep => {
+                    const opt = document.createElement('option');
+                    opt.value = dep.id; // هذا هو department_id
+                    opt.textContent = `${dep.name_tr} (${dep.code})`;
+                    depsSelect.appendChild(opt);
+                });
+            })
+            .catch(err => {
+                console.error(err);
+            });
+
+        // 2) إرسال الشكوى إلى API
+        btn.addEventListener('click', async () => {
+            const text = textEl.value.trim();
+            const depId = depsSelect.value; // قد تكون "" (عدم الاختيار)
+
+            if (!text) {
+                alert('اكتب نص الشكوى أولاً.');
+                return;
+            }
+
+            const payload = { text };
+            // إذا المستخدم اختار قسم، أرسِل department_id؛ إذا تركه فارغًا، لا ترسله إطلاقًا
+            if (depId) payload.department_id = Number(depId);
+
+            try {
+            const res = await fetch('/api/v1/complaints/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken   // <— مهم
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                resultEl.textContent = JSON.stringify(data, null, 2);
+                if (data && typeof data.confidence !== 'undefined') {
+                    console.log("AI confidence:", data.confidence);
+                }
+                if (!res.ok) {
+                    alert('حدث خطأ أثناء الحفظ. راجع النتيجة.');
+                } else {
+                    // تفريغ الحقل بعد الإرسال الناجح
+                    textEl.value = '';
+                    depsSelect.value = '';
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Network error');
+            }
+        });
+    </script>
+</body>
+
+</html>

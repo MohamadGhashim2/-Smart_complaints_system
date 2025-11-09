@@ -1,0 +1,48 @@
+# ---- Python / Django ----
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+*.pot
+*.pyproj
+*.pdb
+
+# Virtual envs (anywhere)
+.venv/
+venv/
+*/.venv/
+*/venv/
+
+# Django build artifacts
+staticfiles/
+media/
+collected_static/
+db.sqlite3
+
+# Env & secrets (anywhere)
+.env
+*/.env
+
+# Node / Frontend (لو اضفت لاحقًا)
+node_modules/
+dist/
+.build/
+.next/
+.out/
+*.cache
+
+# IDE / OS
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Research/outputs temporary
+*.tmp
+~$*.docx
+~$*.xlsx
+
+# Python byte-compiled in subdirs
+**/__pycache__/
+**/*.py[cod]
