@@ -40,12 +40,17 @@ INSTALLED_APPS = [
     "rest_framework",
     "complaints",
     "django_filters",
-"corsheaders",
-
+    "corsheaders",
+    "drf_spectacular",
+    "drf_spectacular_sidecar", 
 ]
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+}
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Smart Complaints API",
+    "VERSION": "0.1.0",
 }
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -57,14 +62,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 MIDDLEWARE = ["corsheaders.middleware.CorsMiddleware"] + MIDDLEWARE
-CORS_ALLOW_ALL_ORIGINS = True  # لاحقًا نقيّدها للدومين
+CORS_ALLOW_ALL_ORIGINS = True 
 
 ROOT_URLCONF = 'core.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
