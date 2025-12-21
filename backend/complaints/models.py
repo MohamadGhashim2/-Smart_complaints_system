@@ -23,6 +23,18 @@ class Complaint(models.Model):
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default="new")
     created_at  = models.DateTimeField(auto_now_add=True)
     confidence  = models.FloatField(null=True, blank=True)  # NEW
+    fingerprint = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    base_complaint = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="duplicates",
+    )
+     # ✅ رقم التكرار (0 = أصلية، 1 = مكرر 1، 2 = مكرر 2، ...)
+    duplicate_index = models.PositiveIntegerField(default=0)
 
+    # ✅ هل تم استخدام AI لهذه الشكوى نفسها؟
+    used_ai = models.BooleanField(default=False)
     def __str__(self):
         return f"Complaint #{self.id} - {self.status}"

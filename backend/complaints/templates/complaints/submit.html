@@ -96,12 +96,12 @@
     </div>
 
     <script>
-         function getCookie(name) {
-                const value = `; ${document.cookie}`;
-                const parts = value.split(`; ${name}=`);
-                if (parts.length === 2) return parts.pop().split(';').shift();
-            }
-            const csrftoken = getCookie('csrftoken');
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+        const csrftoken = getCookie('csrftoken');
         const depsSelect = document.getElementById('department');
         const resultEl = document.getElementById('result');
         const textEl = document.getElementById('text');
@@ -137,7 +137,7 @@
             if (depId) payload.department_id = Number(depId);
 
             try {
-            const res = await fetch('/api/v1/complaints/', {
+                const res = await fetch('/api/v1/complaints/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

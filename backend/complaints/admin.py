@@ -8,6 +8,12 @@ class DepartmentAdmin(admin.ModelAdmin):
 
 @admin.register(Complaint)
 class ComplaintAdmin(admin.ModelAdmin):
-    list_display = ("id", "status", "department", "confidence", "created_at")  # + confidence
-    list_filter = ("status", "department", "created_at")
-    search_fields = ("text", "summary")
+    list_display = (
+        "id", "status", "department", "confidence",
+        "duplicate_index", "base_complaint", "used_ai",
+        "created_at",
+    )
+    list_editable = ("status", "department")
+    list_filter = ("status", "department", "created_at", "duplicate_index", "used_ai")
+    search_fields = ("text", "summary", "fingerprint")
+    readonly_fields = ("confidence", "created_at", "fingerprint", "duplicate_index", "used_ai")
