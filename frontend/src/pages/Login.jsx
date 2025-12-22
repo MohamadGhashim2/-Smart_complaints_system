@@ -1,3 +1,4 @@
+// frontend/pages/Login.jsx
 import { useEffect, useState } from "react";
 import api from "../api";
 import { useNavigate } from "react-router-dom";
@@ -51,8 +52,8 @@ export default function Login() {
         </h1>
 
         <p className="auth-hero-text">
-          Yapay zekâ destekli yönlendirme, Türkçe &amp; Arapça özetler ve
-          yöneticiler, personel ve vatandaşlar için net bir kontrol paneli.
+          Yapay zekâ destekli yönlendirme, Türkçe özetler ve yöneticiler,
+          personel ve vatandaşlar için net bir kontrol paneli.
         </p>
 
         <div className="auth-hero-pills">
@@ -108,11 +109,22 @@ export default function Login() {
           </button>
         </form>
 
+        {/* زر التسجيل */}
+        <p className="auth-meta-small">
+          Henüz hesabınız yok mu?{" "}
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => navigate("/register")}
+          >
+            Vatandaş olarak kayıt ol
+          </button>
+        </p>
+
         <p className="auth-meta">
-          Vatandaş hesapları belediye personeli tarafından oluşturulur.
+          Vatandaş hesapları belediye sistemi tarafından yönetilir.
           <br />
-          Yöneticiler ekstra sayfalar görür: <strong>Kullanıcılar</strong>,{" "}
-          <strong>Yapay zekâ ayarları</strong> ve <strong>Birimler</strong>.
+          
         </p>
       </div>
     </div>

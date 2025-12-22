@@ -1,4 +1,4 @@
-# user/models.py
+# users/models.py
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinLengthValidator, RegexValidator
@@ -62,6 +62,61 @@ class Profile(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # --------- قواعد الدور والصلاحيات ---------
+
+    def apply_role_rules(self):
+        """
+        توحيد الدور + فرض الصلاحيات حسب الدور:
+        - citizen  -> كل الصلاحيات False + is_staff=False
+        - staff    -> الصلاحيات كما هي، لكن is_staff=True
+        - manager  -> كل الصلاحيات True + is_staff=True
+        """
+        # توحيد الدور إلى lower-case
+        role = (self.role or "citizen").lower()
+        valid_roles = {choice[0] for choice in self.ROLE_CHOICES}
+        if role not in valid_roles:
+            role = "citizen"
+        self.role = role
+
+        # تنظيف national_id الفارغ
+        if self.national_id == "":
+            self.national_id = None
+
+        perm_fields = [
+            "can_read_complaints",
+            "can_update_complaints",
+            "can_reply_complaints",
+            "can_manage_departments",
+            "can_manage_users",
+            "can_manage_ai_settings",
+        ]
+
+        if role == "citizen":
+            # مواطن: ممنوع أي صلاحية إدارية
+            for f in perm_fields:
+                setattr(self, f, False)
+        elif role == "manager":
+            # مدير: كل الصلاحيات مفعلة
+            for f in perm_fields:
+                setattr(self, f, True)
+        # staff: نتركها كما جاءت من الـ API
+
+        # مزامنة user.is_staff مع الدور (إلا إذا كان superuser)
+        if self.user_id:
+            u = self.user
+            if role in ("staff", "manager"):
+                if not u.is_staff:
+                    u.is_staff = True
+                    u.save(update_fields=["is_staff"])
+            elif role == "citizen" and not u.is_superuser:
+                if u.is_staff:
+                    u.is_staff = False
+                    u.save(update_fields=["is_staff"])
+
+    def save(self, *args, **kwargs):
+        self.apply_role_rules()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.user.username} ({self.role})"

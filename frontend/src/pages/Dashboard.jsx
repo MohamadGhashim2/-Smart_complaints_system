@@ -1,13 +1,21 @@
+// frontend/pages/Dashboard.jsx
 import { useEffect, useState } from "react";
 import api from "../api";
 import { useNavigate } from "react-router-dom";
 import { clearTokens } from "../auth";
+import DataTableModule from "react-data-table-component";
+
+const DataTable = DataTableModule.default || DataTableModule;
 
 export default function Dashboard() {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [me, setMe] = useState(null);
+
+  // فلاتر الـ DataTable
+  const [filterText, setFilterText] = useState("");
+
   const navigate = useNavigate();
 
   const loadMe = async () => {
@@ -15,7 +23,12 @@ export default function Dashboard() {
       const res = await api.get("/api/v1/auth/me/");
       setMe(res.data);
     } catch (e) {
-      console.log("ME ERROR:", e?.response?.status, e?.response?.data);
+      const status = e?.response?.status;
+      console.log("ME ERROR:", status, e?.response?.data);
+      if (status === 401) {
+        clearTokens();
+        navigate("/");
+      }
     }
   };
 
@@ -35,7 +48,7 @@ export default function Dashboard() {
         navigate("/");
         return;
       }
-      setErr("Failed to load complaints.");
+      setErr("Şikâyetler yüklenemedi.");
     } finally {
       setLoading(false);
     }
@@ -52,139 +65,375 @@ export default function Dashboard() {
     navigate("/");
   };
 
-  const roleLabel = me?.profile?.role
-    ? me.profile.role.charAt(0).toUpperCase() + me.profile.role.slice(1)
-    : me?.is_superuser
-    ? "Superuser"
-    : me?.is_staff
-    ? "Staff"
-    : "Citizen";
+  // ====== ROLE / VIEW TYPE ======
+  const getRoleLabel = () => {
+    if (!me) return "";
+    const profileRole = me.profile?.role;
 
-  const canManageDepartments =
-    me?.is_superuser || me?.profile?.can_manage_departments;
-  const canManageUsers = me?.is_superuser || me?.profile?.can_manage_users;
-  const canManageAISettings =
-    me?.is_superuser || me?.profile?.can_manage_ai_settings;
+    if (profileRole === "manager") return "Yönetici";
+    if (profileRole === "staff") return "Personel";
+    if (profileRole === "citizen") return "Vatandaş";
+
+    // fallback
+    return me.is_staff ? "Yönetici / Personel" : "Vatandaş";
+  };
+
+  const role = me?.profile?.role || (me?.is_staff ? "staff" : "citizen");
+  const isStaffView = role === "staff" || role === "manager" || me?.is_staff;
+
+  // ====== Helpers ======
+  const statusLabel = (status) => {
+    if (status === "new") return "Yeni";
+    if (status === "in_review") return "İncelemede";
+    if (status === "closed") return "Kapandı";
+    return status || "-";
+  };
+
+  const statusClass = (status) => {
+    if (status === "new") return "badge badge-status-new";
+    if (status === "in_review") return "badge badge-status-inreview";
+    if (status === "closed") return "badge badge-status-closed";
+    return "badge";
+  };
+
+  const originLabel = (c) => {
+    const dupIndex = c.duplicate_index ?? 0;
+    if (dupIndex > 0) return `Mükerrer #${dupIndex}`;
+    if (c.used_ai) return "Yapay zekâ";
+    return "Manuel";
+  };
+
+  const originClass = (c) => {
+    const dupIndex = c.duplicate_index ?? 0;
+    if (dupIndex > 0) return "badge badge-origin-dup";
+    if (c.used_ai) return "badge badge-origin-ai";
+    return "badge badge-origin-manual";
+  };
+
+  const previewForStaff = (c) => {
+    const base = c.summary || c.text || "";
+    if (!base) return "—";
+    return base.length > 140 ? base.slice(0, 140) + "…" : base;
+  };
+
+  const previewForCitizen = (c) => {
+    const base = c.text || "";
+    if (!base) return "—";
+    return base.length > 140 ? base.slice(0, 140) + "…" : base;
+  };
+
+  // basit istatistikler
+  const total = complaints.length;
+  const waiting = complaints.filter(
+    (c) => c.status === "new" || c.status === "in_review"
+  ).length;
+  const aiCount = complaints.filter((c) => c.used_ai).length;
+  const dupCount = complaints.filter(
+    (c) => (c.duplicate_index ?? 0) > 0
+  ).length;
+
+  // ====== FILTERS (client-side) ======
+  const filteredComplaints = complaints.filter((c) => {
+    const text = filterText.trim().toLowerCase();
+    if (!text) return true;
+
+    const fields = [
+      c.text || "",
+      c.summary || "",
+      c.department?.name_tr || "",
+      c.department?.code || "",
+      c.user_info?.username || "",
+    ];
+
+    return fields.some((f) => f.toLowerCase().includes(text));
+  });
+
+  // ====== DataTable columns ======
+  const staffColumns = [
+    {
+      name: "ID",
+      selector: (row) => row.id,
+      sortable: true,
+      width: "70px",
+    },
+    {
+      name: "Vatandaş",
+      selector: (row) =>
+        row.user_info
+          ? `${row.user_info.username} (#${row.user_info.id})`
+          : "—",
+      sortable: true,
+      grow: 1.4,
+      wrap: true,
+    },
+    {
+      name: "Tarih",
+      selector: (row) =>
+        row.created_at ? new Date(row.created_at).toLocaleString("tr-TR") : "—",
+      sortable: true,
+      minWidth: "180px",
+    },
+    {
+      name: "Durum",
+      selector: (row) => statusLabel(row.status),
+      sortable: true,
+      width: "130px",
+      cell: (row) => (
+        <span className={statusClass(row.status)}>
+          {statusLabel(row.status)}
+        </span>
+      ),
+    },
+    {
+      name: "Birim",
+      selector: (row) =>
+        row.department
+          ? `${row.department.name_tr} (${row.department.code})`
+          : "—",
+      sortable: true,
+      grow: 1.3,
+      wrap: true,
+    },
+    {
+      name: "Kaynak",
+      selector: (row) => originLabel(row),
+      sortable: true,
+      width: "140px",
+      cell: (row) => (
+        <span className={originClass(row)}>{originLabel(row)}</span>
+      ),
+    },
+    {
+      name: "Güven",
+      selector: (row) =>
+        typeof row.confidence === "number" ? row.confidence : 0,
+      sortable: true,
+      width: "90px",
+      cell: (row) =>
+        typeof row.confidence === "number" ? row.confidence.toFixed(2) : "—",
+    },
+    {
+      name: "Şikâyet",
+      selector: (row) => row.summary || row.text || "",
+      grow: 2,
+      wrap: true,
+      cell: (row) => (
+        <span style={{ fontSize: 13 }}>{previewForStaff(row)}</span>
+      ),
+    },
+    {
+      name: "İşlemler",
+      width: "110px",
+      cell: (row) => (
+        <button
+          className="btn btn-secondary"
+          style={{ padding: "4px 10px", fontSize: 12 }}
+          onClick={() => navigate(`/complaints/${row.id}`)}
+        >
+          Detay
+        </button>
+      ),
+      ignoreRowClick: true,
+      allowOverflow: true,
+      button: true,
+    },
+  ];
+
+  const citizenColumns = [
+    {
+      name: "ID",
+      selector: (row) => row.id,
+      sortable: true,
+      width: "70px",
+    },
+    {
+      name: "Tarih",
+      selector: (row) =>
+        row.created_at ? new Date(row.created_at).toLocaleString("tr-TR") : "—",
+      sortable: true,
+      minWidth: "180px",
+    },
+    {
+      name: "Durum",
+      selector: (row) => statusLabel(row.status),
+      sortable: true,
+      width: "130px",
+      cell: (row) => (
+        <span className={statusClass(row.status)}>
+          {statusLabel(row.status)}
+        </span>
+      ),
+    },
+    {
+      name: "Birim",
+      selector: (row) =>
+        row.department
+          ? `${row.department.name_tr} (${row.department.code})`
+          : "—",
+      sortable: true,
+      grow: 1.3,
+      wrap: true,
+    },
+    {
+      name: "Şikâyet",
+      selector: (row) => row.text || "",
+      grow: 2,
+      wrap: true,
+      cell: (row) => (
+        <span style={{ fontSize: 13 }}>{previewForCitizen(row)}</span>
+      ),
+    },
+    {
+      name: "İşlemler",
+      width: "110px",
+      cell: (row) => (
+        <button
+          className="btn btn-secondary"
+          style={{ padding: "4px 10px", fontSize: 12 }}
+          onClick={() => navigate(`/complaints/${row.id}`)}
+        >
+          Detay
+        </button>
+      ),
+      ignoreRowClick: true,
+      allowOverflow: true,
+      button: true,
+    },
+  ];
+
+  const columns = isStaffView ? staffColumns : citizenColumns;
 
   return (
-    <div
-      style={{ maxWidth: 1100, margin: "40px auto", fontFamily: "system-ui" }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <h2 style={{ margin: 0 }}>Dashboard</h2>
-          {me && (
-            <p style={{ color: "#666", marginTop: 6 }}>
-              Logged in as: <b>{me.username}</b> — Role: <b>{roleLabel}</b>
-            </p>
-          )}
+    <div className="page-shell">
+      <div className="page-inner">
+        {/* ==== ÜST BAR ==== */}
+        <div className="page-header">
+          <div>
+            <h2 className="page-title">
+              {isStaffView ? "Yönetim Paneli" : "Şikâyetlerim"}
+            </h2>
+            {me && (
+              <p className="page-subtitle">
+                Giriş yapan: <strong>{me.username}</strong> — Rol:{" "}
+                <strong>{getRoleLabel()}</strong>
+              </p>
+            )}
+          </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              marginTop: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            {canManageDepartments && (
-              <button onClick={() => navigate("/departments")}>
-                Manage Departments
-              </button>
+          <div className="page-actions">
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate("/new")}
+            >
+              Yeni şikâyet
+            </button>
+
+            {isStaffView && (
+              <>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate("/departments")}
+                >
+                  Birimler
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate("/users")}
+                >
+                  Kullanıcılar
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate("/ai-settings")}
+                >
+                  Yapay zekâ ayarları
+                </button>
+              </>
             )}
-            {canManageAISettings && (
-              <button onClick={() => navigate("/settings")}>
-                System Settings
-              </button>
-            )}
-            {canManageUsers && (
-              <button onClick={() => navigate("/users")}>Manage Users</button>
-            )}
+
+            <button className="btn btn-ghost" onClick={loadComplaints}>
+              Yenile
+            </button>
+            <button className="btn btn-ghost" onClick={logout}>
+              Çıkış
+            </button>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => navigate("/new")}>New Complaint</button>
-          <button onClick={loadComplaints}>Refresh</button>
-          <button onClick={logout}>Logout</button>
+        {err && <div className="alert error">{err}</div>}
+
+        {/* ==== İSTATİSTİKLER ==== */}
+        <div className="stat-grid">
+          <div className="stat-card">
+            <div className="stat-label">
+              {isStaffView ? "Toplam şikâyet" : "Toplam şikâyetim"}
+            </div>
+            <div className="stat-value">{total}</div>
+            <div className="stat-hint">
+              {isStaffView
+                ? "Sistemde kayıtlı tüm şikâyet sayısı."
+                : "Bu hesapla oluşturduğunuz şikâyet sayısı."}
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-label">Bekleyen şikâyet</div>
+            <div className="stat-value">{waiting}</div>
+            <div className="stat-hint">
+              Durumu <strong>Yeni</strong> veya <strong>İncelemede</strong> olan
+              şikâyetler.
+            </div>
+          </div>
+
+          {isStaffView && (
+            <>
+              <div className="stat-card">
+                <div className="stat-label">Yapay zekâ kullanılan</div>
+                <div className="stat-value">{aiCount}</div>
+                <div className="stat-hint">
+                  Otomatik özetleme / yönlendirme yapılan şikâyetler.
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-label">Mükerrer şikâyetler</div>
+                <div className="stat-value">{dupCount}</div>
+                <div className="stat-hint">
+                  Benzer içerikten üretilmiş tekrar şikâyet kayıtları.
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ==== FİLTRE + DATATABLE ==== */}
+        <div
+          style={{
+            marginTop: 16,
+            marginBottom: 8,
+            maxWidth: 420,
+          }}
+        >
+          <input
+            className="input"
+            placeholder="Metne, vatandaşa veya birime göre ara..."
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+          />
+        </div>
+
+        <div className="table-wrapper">
+          <DataTable
+            columns={columns}
+            data={filteredComplaints}
+            progressPending={loading}
+            highlightOnHover
+            dense
+            pagination
+            noDataComponent="Gösterilecek şikâyet bulunamadı."
+          />
         </div>
       </div>
-
-      {loading && <p>Loading...</p>}
-      {err && <p style={{ color: "crimson" }}>{err}</p>}
-
-      {!loading && !err && complaints.length === 0 && (
-        <p style={{ color: "#666" }}>No complaints to show.</p>
-      )}
-
-      {complaints.length > 0 && (
-        <div style={{ overflowX: "auto", marginTop: 12 }}>
-          <table
-            width="100%"
-            cellPadding="10"
-            style={{ borderCollapse: "collapse" }}
-          >
-            <thead>
-              <tr style={{ background: "#111", color: "#fff" }}>
-                <th align="left">ID</th>
-                <th align="left">Created</th>
-                <th align="left">Status</th>
-                <th align="left">Department</th>
-                <th align="left">Confidence</th>
-                <th align="left">Source</th>
-                <th align="left">Summary</th>
-                <th align="left">Text</th>
-              </tr>
-            </thead>
-            <tbody>
-              {complaints.map((c) => (
-                <tr key={c.id} style={{ borderBottom: "1px solid #ddd" }}>
-                  <td>{c.id}</td>
-                  <td>
-                    {c.created_at
-                      ? new Date(c.created_at).toLocaleString()
-                      : "-"}
-                  </td>
-                  <td>{c.status ?? "-"}</td>
-                  <td>
-                    {c.department
-                      ? `${c.department.name_tr} (${c.department.code})`
-                      : "—"}
-                  </td>
-                  <td>
-                    {typeof c.confidence === "number"
-                      ? c.confidence.toFixed(3)
-                      : "—"}
-                  </td>
-                  <td>
-                    {c.duplicate_index > 0
-                      ? `مكرر ${c.duplicate_index}`
-                      : c.used_ai
-                      ? "AI"
-                      : "Manual"}
-                  </td>
-                  <td style={{ maxWidth: 320 }}>
-                    {c.summary
-                      ? c.summary.length > 120
-                        ? c.summary.slice(0, 120) + "…"
-                        : c.summary
-                      : "—"}
-                  </td>
-                  <td style={{ maxWidth: 420 }}>
-                    {c.text?.length > 120 ? c.text.slice(0, 120) + "…" : c.text}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }

@@ -3,6 +3,40 @@ import { useEffect, useState } from "react";
 import api from "../api";
 import { useNavigate } from "react-router-dom";
 
+// نحول كل الأرقام العربية إلى إنجليزية + الفاصلة العشرية
+const normalizeDigits = (value) => {
+  if (value === null || value === undefined) return "";
+  let v = String(value);
+
+  const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
+  const latinDigits = "0123456789";
+
+  let out = "";
+  for (const ch of v) {
+    const idx = arabicDigits.indexOf(ch);
+    if (idx !== -1) {
+      out += latinDigits[idx]; // رقم عربي → إنجليزي
+    } else if (ch === "٫" || ch === "،") {
+      out += "."; // الفاصلة العربية → نقطة
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+};
+
+// نطبّق النورمالايز على القيم الرقمية القادمة من الـ API
+const normalizeSettingsFromApi = (raw) => {
+  if (!raw) return null;
+  return {
+    ...raw,
+    ai_min_confidence: normalizeDigits(raw.ai_min_confidence),
+    similarity_threshold: normalizeDigits(raw.similarity_threshold),
+    spam_max_per_day: normalizeDigits(raw.spam_max_per_day),
+    spam_max_per_hour: normalizeDigits(raw.spam_max_per_hour),
+  };
+};
+
 export default function SystemSettings() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,17 +50,18 @@ export default function SystemSettings() {
       setErr("");
       try {
         const res = await api.get("/api/v1/settings/");
-        setSettings(res.data);
+        setSettings(normalizeSettingsFromApi(res.data));
       } catch (e) {
         console.log(
           "SETTINGS LOAD ERROR:",
           e?.response?.status,
           e?.response?.data
         );
-        if (e?.response?.status === 403 || e?.response?.status === 401) {
-          setErr("Access denied. Only admins can view settings.");
+        const status = e?.response?.status;
+        if (status === 401 || status === 403) {
+          setErr("Bu sayfaya sadece yöneticiler erişebilir.");
         } else {
-          setErr("Failed to load settings.");
+          setErr("Ayarlar yüklenemedi.");
         }
       } finally {
         setLoading(false);
@@ -41,10 +76,12 @@ export default function SystemSettings() {
   };
 
   const onChangeNumber = (key) => (e) => {
-    const val = e.target.value;
+    // هنا نحول الدخل فورًا من ٠١٢٣… إلى 0123…
+    const raw = e.target.value;
+    const normalized = normalizeDigits(raw);
     setSettings((prev) => ({
       ...prev,
-      [key]: val === "" ? "" : Number(val),
+      [key]: normalized,
     }));
   };
 
@@ -61,23 +98,32 @@ export default function SystemSettings() {
         use_ai_summary: settings.use_ai_summary,
         use_ai_routing: settings.use_ai_routing,
         use_duplicate_detection: settings.use_duplicate_detection,
-        ai_min_confidence: settings.ai_min_confidence,
-        similarity_threshold: settings.similarity_threshold,
-        spam_max_per_day: settings.spam_max_per_day,
-        spam_max_per_hour: settings.spam_max_per_hour,
+        ai_min_confidence: Number(
+          normalizeDigits(settings.ai_min_confidence) || 0
+        ),
+        similarity_threshold: Number(
+          normalizeDigits(settings.similarity_threshold) || 0
+        ),
+        spam_max_per_day: Number(
+          normalizeDigits(settings.spam_max_per_day) || 0
+        ),
+        spam_max_per_hour: Number(
+          normalizeDigits(settings.spam_max_per_hour) || 0
+        ),
         allow_citizen_registration: settings.allow_citizen_registration,
       };
 
       const res = await api.patch("/api/v1/settings/", payload);
-      setSettings(res.data);
-      setOk("Settings saved successfully.");
+      // نعيد تحميلها ونطبعها من جديد بنسخة نظيفة
+      setSettings(normalizeSettingsFromApi(res.data));
+      setOk("Ayarlar başarıyla kaydedildi.");
     } catch (e) {
       console.log(
         "SETTINGS SAVE ERROR:",
         e?.response?.status,
         e?.response?.data
       );
-      setErr("Failed to save settings.");
+      setErr("Ayarlar kaydedilemedi.");
     } finally {
       setSaving(false);
     }
@@ -85,176 +131,205 @@ export default function SystemSettings() {
 
   if (loading) {
     return (
-      <div
-        style={{ maxWidth: 800, margin: "40px auto", fontFamily: "system-ui" }}
-      >
-        <h2>System Settings</h2>
-        <p>Loading...</p>
+      <div className="page-shell">
+        <div className="page-inner">
+          <h2 className="page-title">Yapay zekâ & sistem ayarları</h2>
+          <p>Yükleniyor...</p>
+        </div>
       </div>
     );
   }
 
   if (!settings) {
     return (
-      <div
-        style={{ maxWidth: 800, margin: "40px auto", fontFamily: "system-ui" }}
-      >
-        <h2>System Settings</h2>
-        {err && <p style={{ color: "crimson" }}>{err}</p>}
-        <button onClick={() => navigate("/dashboard")}>Back</button>
+      <div className="page-shell">
+        <div className="page-inner">
+          <h2 className="page-title">Yapay zekâ & sistem ayarları</h2>
+          {err && <div className="alert error">{err}</div>}
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => navigate("/dashboard")}
+          >
+            Geri
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      style={{ maxWidth: 800, margin: "40px auto", fontFamily: "system-ui" }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <h2>System Settings</h2>
-        <button onClick={() => navigate("/dashboard")}>Back</button>
-      </div>
-
-      {err && <p style={{ color: "crimson" }}>{err}</p>}
-      {ok && <p style={{ color: "green" }}>{ok}</p>}
-
-      <form
-        onSubmit={save}
-        style={{
-          marginTop: 16,
-          display: "grid",
-          gap: 16,
-          border: "1px solid #ddd",
-          borderRadius: 12,
-          padding: 16,
-        }}
-      >
-        {/* AI toggles */}
-        <div>
-          <h3 style={{ marginTop: 0 }}>AI Features</h3>
-          <label style={{ display: "block", marginBottom: 6 }}>
-            <input
-              type="checkbox"
-              checked={!!settings.use_ai_summary}
-              onChange={onChangeBool("use_ai_summary")}
-            />{" "}
-            Enable AI Summary
-          </label>
-          <label style={{ display: "block", marginBottom: 6 }}>
-            <input
-              type="checkbox"
-              checked={!!settings.use_ai_routing}
-              onChange={onChangeBool("use_ai_routing")}
-            />{" "}
-            Enable AI Department Routing
-          </label>
-          <label style={{ display: "block", marginBottom: 6 }}>
-            <input
-              type="checkbox"
-              checked={!!settings.use_duplicate_detection}
-              onChange={onChangeBool("use_duplicate_detection")}
-            />{" "}
-            Enable Duplicate Detection
-          </label>
+    <div className="page-shell">
+      <div className="page-inner">
+        <div className="page-header">
+          <div>
+            <h2 className="page-title">Yapay zekâ &amp; sistem ayarları</h2>
+            <p className="page-subtitle">
+              Şikâyetlerin yönlendirilmesi, özetlenmesi ve spam filtreleme
+              eşiğini buradan ayarlayın.
+            </p>
+          </div>
+          <div className="page-actions">
+            <button
+              className="btn btn-ghost"
+              type="button"
+              onClick={() => navigate("/dashboard")}
+            >
+              Geri
+            </button>
+          </div>
         </div>
 
-        {/* Thresholds */}
-        <div>
-          <h3 style={{ marginBottom: 8 }}>Thresholds</h3>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
-          >
-            <div>
-              <label>
-                AI Min Confidence (0–1)
+        {err && <div className="alert error">{err}</div>}
+        {ok && <div className="alert success">{ok}</div>}
+
+        <form onSubmit={save} className="settings-form">
+          {/* AI özellikleri */}
+          <section className="settings-section">
+            <h3 className="settings-title">Yapay zekâ özellikleri</h3>
+            <p className="settings-help">
+              Şikâyet metinlerine göre özet çıkarma ve otomatik birim
+              yönlendirmeyi isteğe göre açıp kapatabilirsiniz.
+            </p>
+
+            <label className="settings-check">
+              <input
+                type="checkbox"
+                checked={!!settings.use_ai_summary}
+                onChange={onChangeBool("use_ai_summary")}
+              />
+              AI özetleme özelliğini kullan
+            </label>
+
+            <label className="settings-check">
+              <input
+                type="checkbox"
+                checked={!!settings.use_ai_routing}
+                onChange={onChangeBool("use_ai_routing")}
+              />
+              Şikâyetleri otomatik olarak ilgili birime yönlendir
+            </label>
+
+            <label className="settings-check">
+              <input
+                type="checkbox"
+                checked={!!settings.use_duplicate_detection}
+                onChange={onChangeBool("use_duplicate_detection")}
+              />
+              Benzer şikâyetleri (duplicate) tespit et
+            </label>
+          </section>
+
+          {/* Eşik değerleri */}
+          <section className="settings-section">
+            <h3 className="settings-title">Eşik değerleri</h3>
+            <p className="settings-help">
+              Yapay zekânın kararı ne kadar güçlü olduğunda dikkate alınacağını
+              belirleyin.
+            </p>
+
+            <div className="settings-grid-2">
+              <div className="field-group">
+                <label className="field-label">AI güven eşiği (0–1)</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="1"
-                  value={settings.ai_min_confidence}
+                  type="text"
+                  inputMode="decimal"
+                  lang="en"
+                  className="input"
+                  value={settings.ai_min_confidence ?? ""}
                   onChange={onChangeNumber("ai_min_confidence")}
-                  style={{ width: "100%", padding: 6, marginTop: 4 }}
                 />
-              </label>
-            </div>
-            <div>
-              <label>
-                Duplicate Similarity Threshold (0–1)
+                <p className="field-hint">
+                  Örn. 0.6 → güven %60 altında ise AI birim önerisi
+                  kullanılmasın.
+                </p>
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">
+                  Duplicate benzerlik eşiği (0–1)
+                </label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="1"
-                  value={settings.similarity_threshold}
+                  type="text"
+                  inputMode="decimal"
+                  lang="en"
+                  className="input"
+                  value={settings.similarity_threshold ?? ""}
                   onChange={onChangeNumber("similarity_threshold")}
-                  style={{ width: "100%", padding: 6, marginTop: 4 }}
                 />
-              </label>
+                <p className="field-hint">
+                  Örn. 0.8 → benzerlik %80 üzerindeyse mükerrer kabul edilir.
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
+          </section>
 
-        {/* Spam rules */}
-        <div>
-          <h3 style={{ marginBottom: 8 }}>Spam Rules</h3>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
-          >
-            <div>
-              <label>
-                Max Complaints per Day
+          {/* Spam kuralları */}
+          <section className="settings-section">
+            <h3 className="settings-title">Spam kuralları</h3>
+            <p className="settings-help">
+              Aynı kullanıcının kısa sürede çok sayıda şikâyet göndermesini
+              sınırlandırın.
+            </p>
+
+            <div className="settings-grid-2">
+              <div className="field-group">
+                <label className="field-label">Günlük maksimum şikâyet</label>
                 <input
-                  type="number"
-                  min="1"
-                  value={settings.spam_max_per_day}
+                  type="text"
+                  inputMode="numeric"
+                  lang="en"
+                  className="input"
+                  value={settings.spam_max_per_day ?? ""}
                   onChange={onChangeNumber("spam_max_per_day")}
-                  style={{ width: "100%", padding: 6, marginTop: 4 }}
                 />
-              </label>
-            </div>
-            <div>
-              <label>
-                Max Complaints per Hour
+                <p className="field-hint">
+                  Bu sınır aşıldığında kullanıcı geçici olarak spam sayılır.
+                </p>
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">Saatlik maksimum şikâyet</label>
                 <input
-                  type="number"
-                  min="1"
-                  value={settings.spam_max_per_hour}
+                  type="text"
+                  inputMode="numeric"
+                  lang="en"
+                  className="input"
+                  value={settings.spam_max_per_hour ?? ""}
                   onChange={onChangeNumber("spam_max_per_hour")}
-                  style={{ width: "100%", padding: 6, marginTop: 4 }}
                 />
-              </label>
+                <p className="field-hint">
+                  Çok yoğun arka arkaya şikâyetleri engellemek için.
+                </p>
+              </div>
             </div>
+          </section>
+
+          {/* Vatandaş kayıt ayarı */}
+          <section className="settings-section">
+            <h3 className="settings-title">Vatandaş hesapları</h3>
+            <p className="settings-help">
+              Vatandaşların kendilerinin kayıt oluşturup oluşturamayacağını
+              belirleyin.
+            </p>
+
+            <label className="settings-check">
+              <input
+                type="checkbox"
+                checked={!!settings.allow_citizen_registration}
+                onChange={onChangeBool("allow_citizen_registration")}
+              />
+              Vatandaşların sistem üzerinden kayıt olmasına izin ver
+            </label>
+          </section>
+
+          <div className="form-actions">
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? "Kaydediliyor..." : "Ayarları kaydet"}
+            </button>
           </div>
-        </div>
-
-        {/* Citizen registration */}
-        <div>
-          <h3 style={{ marginBottom: 8 }}>Citizens</h3>
-          <label style={{ display: "block", marginBottom: 6 }}>
-            <input
-              type="checkbox"
-              checked={!!settings.allow_citizen_registration}
-              onChange={onChangeBool("allow_citizen_registration")}
-            />{" "}
-            Allow Citizen Registration
-          </label>
-        </div>
-
-        <button
-          type="submit"
-          disabled={saving}
-          style={{ padding: "10px 16px", alignSelf: "flex-start" }}
-        >
-          {saving ? "Saving..." : "Save Settings"}
-        </button>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

@@ -8,73 +8,38 @@ from rest_framework import permissions, status
 
 from .models import Profile, SystemSettings
 from .serializers import SystemSettingsSerializer
-
-
-# --------- Permissions ---------
-
-class CanManageAISettings(permissions.BasePermission):
-    def has_permission(self, request, view):
-        user = request.user
-        if not user or not user.is_authenticated:
-            return False
-        if user.is_superuser:
-            return True
-        try:
-            profile = user.profile
-        except Profile.DoesNotExist:
-            return False
-        return bool(profile.can_manage_ai_settings)
-
-
-class CanManageUsers(permissions.BasePermission):
-    def has_permission(self, request, view):
-        user = request.user
-        if not user or not user.is_authenticated:
-            return False
-        if user.is_superuser:
-            return True
-        try:
-            profile = user.profile
-        except Profile.DoesNotExist:
-            return False
-        return bool(profile.can_manage_users)
+from .permissions import CanManageAISettings, CanManageUsers
 
 
 # --------- Helpers ---------
 
 def serialize_user(u: User):
-    """شكل واحد لبيانات المستخدم للـ Dashboard."""
+    """
+    شكل ثابت لبيانات المستخدم للـ Dashboard و Users Management.
+    نرجّع profile كـ object داخلي.
+    """
     p = getattr(u, "profile", None)
-
-    # الدور
-    if p and p.role:
-        role = p.role
-    else:
-        if u.is_superuser:
-            role = "Manager"
-        elif u.is_staff:
-            role = "Staff"
-        else:
-            role = "Citizen"
-
-    perms = {
-        "read_complaints": bool(getattr(p, "can_read_complaints", False)),
-        "update_complaints": bool(getattr(p, "can_update_complaints", False)),
-        "reply_complaints": bool(getattr(p, "can_reply_complaints", False)),
-        "manage_departments": bool(getattr(p, "can_manage_departments", False)),
-        "manage_users": bool(getattr(p, "can_manage_users", False)),
-        "manage_ai_settings": bool(getattr(p, "can_manage_ai_settings", False)),
-    }
+    profile_data = None
+    if p:
+        profile_data = {
+            "role": p.role,
+            "national_id": p.national_id,
+            "is_blocked": p.is_blocked,
+            "is_spammer": p.is_spammer,
+            "can_read_complaints": p.can_read_complaints,
+            "can_update_complaints": p.can_update_complaints,
+            "can_reply_complaints": p.can_reply_complaints,
+            "can_manage_departments": p.can_manage_departments,
+            "can_manage_users": p.can_manage_users,
+            "can_manage_ai_settings": p.can_manage_ai_settings,
+        }
 
     return {
         "id": u.id,
         "username": u.username,
-        "role": role,
         "is_staff": u.is_staff,
-        "national_id": getattr(p, "national_id", "") or "",
-        "is_blocked": bool(getattr(p, "is_blocked", False)),
-        "is_spammer": bool(getattr(p, "is_spammer", False)),
-        "permissions": perms,
+        "is_superuser": u.is_superuser,
+        "profile": profile_data,
     }
 
 
@@ -83,7 +48,6 @@ def _extract_perm(perms_dict, data_dict, key, alt=None, default=False):
     if alt is None:
         alt = key
 
-    # لو الـ key موجود صراحةً في أي dict نستخدم قيمته
     if key in perms_dict or alt in perms_dict:
         return bool(perms_dict.get(key) or perms_dict.get(alt))
     if key in data_dict or alt in data_dict:
@@ -135,11 +99,12 @@ class RegisterView(APIView):
 
         user = User.objects.create_user(username=username, password=password)
         user.is_staff = False
-        user.save(update_fields=["is_staff"])
+        user.is_superuser = False
+        user.save(update_fields=["is_staff", "is_superuser"])
 
         profile = Profile.objects.create(
             user=user,
-            role="Citizen",
+            role="citizen",  # توحيد
             national_id=national_id,
         )
 
@@ -231,9 +196,16 @@ class AdminUsersView(APIView):
 
         username = (data.get("username") or "").strip()
         password = (data.get("password") or "").strip()
-        role = (data.get("role") or "Citizen").strip()
+        role = (data.get("role") or "citizen").strip().lower()
         national_id = (data.get("national_id") or "").strip()
-        is_staff_flag = bool(data.get("is_staff"))
+        # is_staff من الدور فقط، لا نعتمد على ما يأتي من الـ API
+        # is_staff_flag = bool(data.get("is_staff"))
+
+        if role not in ("citizen", "staff", "manager"):
+            return Response(
+                {"detail": "Invalid role."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if not username or not password:
             return Response(
@@ -247,9 +219,9 @@ class AdminUsersView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # تحقق من الرقم الوطني لو Citizen
-        if role == "Citizen":
-            if not national_id or len(national_id) != 11:
+        # تحقق من الرقم الوطني لو citizen
+        if role == "citizen":
+            if not national_id or len(national_id) != 11 or not national_id.isdigit():
                 return Response(
                     {"detail": "Citizen must have 11-digit national_id."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -271,12 +243,12 @@ class AdminUsersView(APIView):
 
         user = User.objects.create_user(username=username, password=password)
 
-        # staff flag من الدور أو من الـ checkbox
-        if role in ["Staff", "Manager"] or is_staff_flag:
-            user.is_staff = True
-        user.save(update_fields=["is_staff"])
+        # staff flag مشتقة من role
+        user.is_staff = role in ("staff", "manager")
+        user.is_superuser = False
+        user.save(update_fields=["is_staff", "is_superuser"])
 
-        Profile.objects.create(
+        profile = Profile.objects.create(
             user=user,
             role=role,
             national_id=national_id or None,
@@ -287,6 +259,8 @@ class AdminUsersView(APIView):
             can_manage_users=can_manage_users,
             can_manage_ai_settings=can_manage_ai,
         )
+
+        # Profile.apply_role_rules سيعدّل الصلاحيات للمواطن/المدير تلقائياً
 
         return Response(serialize_user(user), status=status.HTTP_201_CREATED)
 
@@ -314,12 +288,12 @@ class AdminUserDetailView(APIView):
     def patch(self, request, pk):
         u = self.get_object(pk)
         data = request.data
-        profile, _ = Profile.objects.get_or_create(user=u, defaults={"role": "Citizen"})
+        profile, _ = Profile.objects.get_or_create(user=u, defaults={"role": "citizen"})
 
         username = data.get("username")
-        role = data.get("role")
+        role_raw = data.get("role")
         national_id = data.get("national_id")
-        is_staff_flag = data.get("is_staff")
+        is_staff_flag = data.get("is_staff")  # لن نستخدمه فعلياً
         is_blocked = data.get("is_blocked")
         is_spammer = data.get("is_spammer")
         perms = data.get("permissions") or {}
@@ -340,21 +314,28 @@ class AdminUserDetailView(APIView):
             u.username = username
 
         # role
-        if role:
+        role = None
+        if role_raw:
+            role = role_raw.strip().lower()
+            if role not in ("citizen", "staff", "manager"):
+                return Response(
+                    {"detail": "Invalid role."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             profile.role = role
 
         # national_id
         if national_id is not None:
-            national_id = national_id.strip() or None
+            national_id = (national_id or "").strip() or None
             if national_id:
-                if (
-                    len(national_id) != 11
-                    and (role == "Citizen" or profile.role == "Citizen")
-                ):
-                    return Response(
-                        {"detail": "Citizen must have 11-digit national_id."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+                # إذا بقي الدور citizen (سواء من الجديد أو القديم) يجب أن يكون 11 رقم
+                effective_role = role or profile.role
+                if effective_role == "citizen":
+                    if len(national_id) != 11 or not national_id.isdigit():
+                        return Response(
+                            {"detail": "Citizen must have 11-digit national_id."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
                 if Profile.objects.exclude(pk=profile.pk).filter(
                     national_id=national_id
                 ).exists():
@@ -364,14 +345,12 @@ class AdminUserDetailView(APIView):
                     )
             profile.national_id = national_id
 
-        # staff flag
-        if is_staff_flag is not None:
-            u.is_staff = bool(is_staff_flag)
-        else:
-            if role in ["Staff", "Manager"]:
-                u.is_staff = True
-            elif role == "Citizen" and not u.is_superuser:
-                u.is_staff = False
+        # staff flag مشتق من الدور فقط
+        effective_role = role or profile.role
+        if effective_role in ("staff", "manager"):
+            u.is_staff = True
+        elif effective_role == "citizen" and not u.is_superuser:
+            u.is_staff = False
 
         # block / spam
         if is_blocked is not None:
@@ -406,7 +385,7 @@ class AdminUserDetailView(APIView):
         )
 
         u.save()
-        profile.save()
+        profile.save()  # هنا Profile.apply_role_rules ستطبق قواعد الدور والصلاحيات
 
         return Response(serialize_user(u))
 

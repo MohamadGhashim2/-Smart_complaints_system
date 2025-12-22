@@ -63,12 +63,7 @@ class RegisterSerializer(serializers.Serializer):
             user=user,
             role="citizen",
             national_id=national_id,
-            can_read_complaints=False,
-            can_update_complaints=False,
-            can_reply_complaints=False,
-            can_manage_departments=False,
-            can_manage_users=False,
-            can_manage_ai_settings=False,
+            # باقي الصلاحيات سيتم تصفيرها في Profile.apply_role_rules()
         )
 
         return user
@@ -106,6 +101,31 @@ class ProfileSerializer(serializers.ModelSerializer):
         if qs.exists():
             raise serializers.ValidationError("This national ID is already used.")
         return value
+
+    def validate(self, attrs):
+        """
+        توحيد الدور + التحقق من أن المواطن لديه رقم وطني.
+        (قواعد الصلاحيات نفسها تُطبق داخل Profile.apply_role_rules)
+        """
+        role = attrs.get("role")
+        if not role and self.instance:
+            role = self.instance.role
+
+        if role:
+            role = role.lower()
+            attrs["role"] = role
+
+        if role == "citizen":
+            # المواطن يجب أن يملك national_id (سواء في attrs أو في instance)
+            national_id = attrs.get("national_id")
+            if national_id is None and self.instance:
+                national_id = self.instance.national_id
+            if not national_id:
+                raise serializers.ValidationError(
+                    {"national_id": "National ID is required for citizens."}
+                )
+
+        return attrs
 
 
 class UserDetailSerializer(serializers.ModelSerializer):
@@ -157,6 +177,7 @@ class UserCreateSerializer(serializers.Serializer):
     national_id = serializers.CharField(
         required=False, allow_blank=True, allow_null=True, max_length=11
     )
+    # is_staff لن نعتمد عليه من الـ API – سنشتقه من role
     is_staff = serializers.BooleanField(required=False, default=False)
 
     can_read_complaints = serializers.BooleanField(required=False, default=False)
@@ -195,10 +216,8 @@ class UserCreateSerializer(serializers.Serializer):
         role = validated_data["role"]
         national_id = validated_data.get("national_id") or None
 
-        is_staff = validated_data.get("is_staff", False)
-        if role == "citizen":
-            # المواطن لا يكون staff
-            is_staff = False
+        # is_staff مشتقة من الدور فقط
+        is_staff = role in ("staff", "manager")
 
         user = User.objects.create_user(
             username=username,
@@ -217,6 +236,7 @@ class UserCreateSerializer(serializers.Serializer):
             can_manage_departments=validated_data.get("can_manage_departments", False),
             can_manage_users=validated_data.get("can_manage_users", False),
             can_manage_ai_settings=validated_data.get("can_manage_ai_settings", False),
+            # لاحظ أن Profile.apply_role_rules سيعدل الصلاحيات تلقائياً
         )
 
         return user

@@ -1,12 +1,18 @@
 from rest_framework import serializers
-from .models import Complaint, Department
 from django.contrib.auth.models import User
+from .models import Complaint, Department
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
         fields = ["id", "name_tr", "name_ar", "code"]
+
+
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username"]
 
 
 class ComplaintSerializer(serializers.ModelSerializer):
@@ -16,38 +22,38 @@ class ComplaintSerializer(serializers.ModelSerializer):
         source="department",
         write_only=True,
         required=False,
+        allow_null=True,
     )
 
-    # 👇 هنا نرجّع الـ base_complaint كـ ID (PK)
-    base_complaint = serializers.PrimaryKeyRelatedField(read_only=True)
+    # صاحب الشكوى
+    user_info = UserMiniSerializer(source="user", read_only=True)
 
     class Meta:
         model = Complaint
         fields = [
             "id",
-            "user",
+            "user",          # id فقط
+            "user_info",     # {id, username}
             "text",
             "summary",
             "status",
             "created_at",
+            "in_review_at",
+            "closed_at",
             "department",
             "department_id",
             "confidence",
-            "fingerprint",
-            "base_complaint",   
-            "duplicate_index",
             "used_ai",
+            "duplicate_index",
         ]
         read_only_fields = [
             "id",
             "user",
-            "summary",
-            "status",
             "created_at",
-            "department",
+            "in_review_at",
+            "closed_at",
             "confidence",
-            "fingerprint",
-            "base_complaint",
-            "duplicate_index",
             "used_ai",
+            "duplicate_index",
+            "department",
         ]

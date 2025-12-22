@@ -18,11 +18,11 @@ class Complaint(models.Model):
 
     user        = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     text        = models.TextField()
-    summary     = models.TextField(blank=True, null=True)  # سنتركه فارغ الآن
+    summary     = models.TextField(blank=True, null=True)     
     department  = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default="new")
     created_at  = models.DateTimeField(auto_now_add=True)
-    confidence  = models.FloatField(null=True, blank=True)  # NEW
+    confidence  = models.FloatField(null=True, blank=True)   
     fingerprint = models.CharField(max_length=255, blank=True, null=True, db_index=True)
     base_complaint = models.ForeignKey(
         "self",
@@ -31,10 +31,14 @@ class Complaint(models.Model):
         on_delete=models.SET_NULL,
         related_name="duplicates",
     )
-     # ✅ رقم التكرار (0 = أصلية، 1 = مكرر 1، 2 = مكرر 2، ...)
+    
     duplicate_index = models.PositiveIntegerField(default=0)
 
-    # ✅ هل تم استخدام AI لهذه الشكوى نفسها؟
-    used_ai = models.BooleanField(default=False)
+    used_ai = models.BooleanField(default=False)    
+    
+    
+    in_review_at = models.DateTimeField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
     def __str__(self):
         return f"Complaint #{self.id} - {self.status}"
