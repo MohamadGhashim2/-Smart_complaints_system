@@ -57,7 +57,7 @@ def classify_department_id(text: str, min_score: float = 0.55):
 Departments (JSON array):
 {departments_json}
 
-Complaint text (could be Turkish or Arabic):
+Complaint text (could be Turkish or Arabic or English):
 \"\"\"{text}\"\"\"
 
 Return ONLY a JSON object with:

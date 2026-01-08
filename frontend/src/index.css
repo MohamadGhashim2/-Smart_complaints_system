@@ -73,8 +73,8 @@ body {
   --dt-bg: #020617;
   --dt-header-bg: #020617;
   --dt-row-bg: rgba(15, 23, 42, 0.98);
-  --dt-row-alt-bg: rgba(15, 23, 42, 0.94);
-  --dt-row-hover-bg: rgba(79, 70, 229, 0.25);
+  --dt-row-alt-bg: rgba(15, 23, 42, 0.425);
+  --dt-row-hover-bg: rgba(233, 233, 233, 0.25);
   --dt-border: rgba(31, 41, 55, 0.9);
   --dt-text-main: #e5e7eb;
   --dt-text-muted: #9ca3af;
@@ -157,9 +157,9 @@ body {
   --dt-bg: #ffffff;
   --dt-header-bg: #f3f4f6;
   --dt-row-bg: #ffffff;
-  --dt-row-alt-bg: #f9fafb;
-  --dt-row-hover-bg: rgba(79, 70, 229, 0.08);
-  --dt-border: rgba(209, 213, 219, 0.9);
+  --dt-row-alt-bg: #e5e5e9;
+  --dt-row-hover-bg: rgba(1, 0, 14, 0.28);
+  --dt-border: rgba(231, 217, 217, 0.9);
   --dt-text-main: #111827;
   --dt-text-muted: #6b7280;
 
@@ -222,7 +222,7 @@ body {
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(191, 219, 254, 0.8);
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
@@ -406,20 +406,20 @@ input[type="checkbox"] {
 
 .alert.error {
   background: var(--danger-soft);
-  color: #fecaca;
+  color: var(--danger);
   border: 1px solid var(--danger);
 }
 
 .alert.success {
   background: var(--success-soft);
   border: 1px solid var(--success);
-  color: #bbf7d0;
+  color: var(--badge-status-closed-text);
 }
 
 .auth-meta-small {
   margin-top: 12px;
   font-size: 0.9rem;
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 .link-button {
@@ -434,13 +434,6 @@ input[type="checkbox"] {
 .link-button:hover {
   text-decoration: underline;
 }
-
-.alert.success {
-  background: rgba(46, 204, 113, 0.12);
-  border: 1px solid rgba(46, 204, 113, 0.6);
-  color: #2ecc71;
-}
-
 
 
 /* ========== Dashboard / İç sayfalar ========== */
@@ -706,26 +699,6 @@ input[type="checkbox"] {
   color: var(--text-muted);
 }
 
-/* alerts */
-
-.alert {
-  border-radius: 10px;
-  padding: 8px 10px;
-  margin-bottom: 6px;
-  font-size: 0.85rem;
-}
-
-.alert.error {
-  background: rgba(248, 113, 113, 0.1);
-  border: 1px solid #f97373;
-  color: var(--danger-soft);
-}
-
-.alert.success {
-  background: rgba(34, 197, 94, 0.12);
-  border: 1px solid #22c55e;
-  color: var(--success-soft);
-}
 
 /* actions */
 
@@ -757,8 +730,7 @@ input[type="checkbox"] {
   top: 0;
   z-index: 40;
   backdrop-filter: blur(18px);
-  background: rgba(3, 7, 18, 0.92);
-  /* نفس الثيم الداكن */
+  background: var(--surface-elevated);
   border-bottom: 1px solid #111827;
 }
 
@@ -825,7 +797,7 @@ input[type="checkbox"] {
 
 .nav-subtitle {
   font-size: 1rem;
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 /* Links */
@@ -839,7 +811,7 @@ input[type="checkbox"] {
 }
 
 .nav-link {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #9ca3af;
   text-decoration: none;
   padding: 6px 12px;
@@ -1216,4 +1188,66 @@ input[type="checkbox"] {
 .complaint-summary-input {
   min-height: 110px;
   resize: vertical;
+}
+
+/* Language dropdown */
+.nav-lang-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  padding-inline: 10px;
+  min-width: 60px;
+  justify-content: center;
+}
+
+/* القائمة المنسدلة */
+.nav-lang-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: var(--surface-card);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  padding: 4px 0;
+  min-width: 90px;
+  z-index: 40;
+}
+
+.nav-lang-option {
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.06s ease;
+}
+
+.nav-lang-option:hover {
+  background: rgba(148, 163, 184, 0.18);
+  transform: translateY(-0.5px);
+}
+
+
+
+[data-theme="dark"] .rdt_Pagination select {
+  background-color: #111827;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  border-radius: 4px;
+}
+
+[data-theme="dark"] .rdt_Pagination select option {
+  background-color: #111827;
+  color: #e5e7eb;
 }

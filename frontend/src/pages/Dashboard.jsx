@@ -4,6 +4,7 @@ import api from "../api";
 import { useNavigate } from "react-router-dom";
 import { clearTokens } from "../auth";
 import DataTableModule from "react-data-table-component";
+import { useTranslation } from "react-i18next";
 
 const DataTable = DataTableModule.default || DataTableModule;
 
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [filterText, setFilterText] = useState("");
 
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const loadMe = async () => {
     try {
@@ -48,7 +50,7 @@ export default function Dashboard() {
         navigate("/");
         return;
       }
-      setErr("Şikâyetler yüklenemedi.");
+      setErr(t("dashboard.errors.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -70,22 +72,32 @@ export default function Dashboard() {
     if (!me) return "";
     const profileRole = me.profile?.role;
 
-    if (profileRole === "manager") return "Yönetici";
-    if (profileRole === "staff") return "Personel";
-    if (profileRole === "citizen") return "Vatandaş";
+    if (profileRole === "manager") return t("usersManagement.roles.manager");
+    if (profileRole === "staff") return t("usersManagement.roles.staff");
+    if (profileRole === "citizen") return t("usersManagement.roles.citizen");
 
     // fallback
-    return me.is_staff ? "Yönetici / Personel" : "Vatandaş";
+    return me.is_staff
+      ? t("departments.role.staffOrManager")
+      : t("usersManagement.roles.citizen");
   };
 
   const role = me?.profile?.role || (me?.is_staff ? "staff" : "citizen");
   const isStaffView = role === "staff" || role === "manager" || me?.is_staff;
 
+  // ✅ صلاحيات تفصيلية من البروفايل
+  const profilePerms = me?.profile || {};
+  const canManageDepartments =
+    me?.is_superuser || profilePerms.can_manage_departments;
+  const canManageUsers = me?.is_superuser || profilePerms.can_manage_users;
+  const canManageAiSettings =
+    me?.is_superuser || profilePerms.can_manage_ai_settings;
+
   // ====== Helpers ======
   const statusLabel = (status) => {
-    if (status === "new") return "Yeni";
-    if (status === "in_review") return "İncelemede";
-    if (status === "closed") return "Kapandı";
+    if (status === "new") return t("dashboard.status.new");
+    if (status === "in_review") return t("dashboard.status.in_review");
+    if (status === "closed") return t("dashboard.status.closed");
     return status || "-";
   };
 
@@ -98,9 +110,10 @@ export default function Dashboard() {
 
   const originLabel = (c) => {
     const dupIndex = c.duplicate_index ?? 0;
-    if (dupIndex > 0) return `Mükerrer #${dupIndex}`;
-    if (c.used_ai) return "Yapay zekâ";
-    return "Manuel";
+    if (dupIndex > 0)
+      return t("dashboard.source.duplicate", { index: dupIndex });
+    if (c.used_ai) return t("dashboard.source.ai");
+    return t("dashboard.source.manual");
   };
 
   const originClass = (c) => {
@@ -151,13 +164,13 @@ export default function Dashboard() {
   // ====== DataTable columns ======
   const staffColumns = [
     {
-      name: "ID",
+      name: t("dashboard.table.columns.id"),
       selector: (row) => row.id,
       sortable: true,
       width: "70px",
     },
     {
-      name: "Vatandaş",
+      name: t("dashboard.table.columns.citizen"),
       selector: (row) =>
         row.user_info
           ? `${row.user_info.username} (#${row.user_info.id})`
@@ -167,14 +180,14 @@ export default function Dashboard() {
       wrap: true,
     },
     {
-      name: "Tarih",
+      name: t("dashboard.table.columns.date"),
       selector: (row) =>
         row.created_at ? new Date(row.created_at).toLocaleString("tr-TR") : "—",
       sortable: true,
       minWidth: "180px",
     },
     {
-      name: "Durum",
+      name: t("dashboard.table.columns.status"),
       selector: (row) => statusLabel(row.status),
       sortable: true,
       width: "130px",
@@ -185,7 +198,7 @@ export default function Dashboard() {
       ),
     },
     {
-      name: "Birim",
+      name: t("dashboard.table.columns.department"),
       selector: (row) =>
         row.department
           ? `${row.department.name_tr} (${row.department.code})`
@@ -195,7 +208,7 @@ export default function Dashboard() {
       wrap: true,
     },
     {
-      name: "Kaynak",
+      name: t("dashboard.table.columns.source"),
       selector: (row) => originLabel(row),
       sortable: true,
       width: "140px",
@@ -204,7 +217,7 @@ export default function Dashboard() {
       ),
     },
     {
-      name: "Güven",
+      name: t("dashboard.table.columns.confidence"),
       selector: (row) =>
         typeof row.confidence === "number" ? row.confidence : 0,
       sortable: true,
@@ -213,7 +226,7 @@ export default function Dashboard() {
         typeof row.confidence === "number" ? row.confidence.toFixed(2) : "—",
     },
     {
-      name: "Şikâyet",
+      name: t("dashboard.table.columns.complaint"),
       selector: (row) => row.summary || row.text || "",
       grow: 2,
       wrap: true,
@@ -222,7 +235,7 @@ export default function Dashboard() {
       ),
     },
     {
-      name: "İşlemler",
+      name: t("dashboard.table.columns.actions"),
       width: "110px",
       cell: (row) => (
         <button
@@ -230,7 +243,7 @@ export default function Dashboard() {
           style={{ padding: "4px 10px", fontSize: 12 }}
           onClick={() => navigate(`/complaints/${row.id}`)}
         >
-          Detay
+          {t("dashboard.table.actions.details")}
         </button>
       ),
       ignoreRowClick: true,
@@ -241,20 +254,20 @@ export default function Dashboard() {
 
   const citizenColumns = [
     {
-      name: "ID",
+      name: t("dashboard.table.columns.id"),
       selector: (row) => row.id,
       sortable: true,
       width: "70px",
     },
     {
-      name: "Tarih",
+      name: t("dashboard.table.columns.date"),
       selector: (row) =>
         row.created_at ? new Date(row.created_at).toLocaleString("tr-TR") : "—",
       sortable: true,
       minWidth: "180px",
     },
     {
-      name: "Durum",
+      name: t("dashboard.table.columns.status"),
       selector: (row) => statusLabel(row.status),
       sortable: true,
       width: "130px",
@@ -265,7 +278,7 @@ export default function Dashboard() {
       ),
     },
     {
-      name: "Birim",
+      name: t("dashboard.table.columns.department"),
       selector: (row) =>
         row.department
           ? `${row.department.name_tr} (${row.department.code})`
@@ -275,7 +288,7 @@ export default function Dashboard() {
       wrap: true,
     },
     {
-      name: "Şikâyet",
+      name: t("dashboard.table.columns.complaint"),
       selector: (row) => row.text || "",
       grow: 2,
       wrap: true,
@@ -284,7 +297,7 @@ export default function Dashboard() {
       ),
     },
     {
-      name: "İşlemler",
+      name: t("dashboard.table.columns.actions"),
       width: "110px",
       cell: (row) => (
         <button
@@ -292,7 +305,7 @@ export default function Dashboard() {
           style={{ padding: "4px 10px", fontSize: 12 }}
           onClick={() => navigate(`/complaints/${row.id}`)}
         >
-          Detay
+          {t("dashboard.table.actions.details")}
         </button>
       ),
       ignoreRowClick: true,
@@ -310,11 +323,14 @@ export default function Dashboard() {
         <div className="page-header">
           <div>
             <h2 className="page-title">
-              {isStaffView ? "Yönetim Paneli" : "Şikâyetlerim"}
+              {isStaffView
+                ? t("dashboard.title.staff")
+                : t("dashboard.title.citizen")}
             </h2>
             {me && (
               <p className="page-subtitle">
-                Giriş yapan: <strong>{me.username}</strong> — Rol:{" "}
+                {t("dashboard.header.loggedInAs")}{" "}
+                <strong>{me.username}</strong> — {t("dashboard.header.role")}{" "}
                 <strong>{getRoleLabel()}</strong>
               </p>
             )}
@@ -325,37 +341,44 @@ export default function Dashboard() {
               className="btn btn-secondary"
               onClick={() => navigate("/new")}
             >
-              Yeni şikâyet
+              {t("nav.newComplaint")}
             </button>
 
             {isStaffView && (
               <>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => navigate("/departments")}
-                >
-                  Birimler
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => navigate("/users")}
-                >
-                  Kullanıcılar
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => navigate("/ai-settings")}
-                >
-                  Yapay zekâ ayarları
-                </button>
+                {canManageDepartments && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => navigate("/departments")}
+                  >
+                    {t("nav.departments")}
+                  </button>
+                )}
+                {canManageUsers && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => navigate("/users")}
+                  >
+                    {t("nav.users")}
+                  </button>
+                )}
+
+                {canManageAiSettings && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => navigate("/ai-settings")}
+                  >
+                    {t("nav.aiSettings")}
+                  </button>
+                )}
               </>
             )}
 
             <button className="btn btn-ghost" onClick={loadComplaints}>
-              Yenile
+              {t("common.refresh")}
             </button>
             <button className="btn btn-ghost" onClick={logout}>
-              Çıkış
+              {t("nav.logout")}
             </button>
           </div>
         </div>
@@ -366,40 +389,45 @@ export default function Dashboard() {
         <div className="stat-grid">
           <div className="stat-card">
             <div className="stat-label">
-              {isStaffView ? "Toplam şikâyet" : "Toplam şikâyetim"}
+              {isStaffView
+                ? t("dashboard.stats.total.staffLabel")
+                : t("dashboard.stats.total.citizenLabel")}
             </div>
             <div className="stat-value">{total}</div>
             <div className="stat-hint">
               {isStaffView
-                ? "Sistemde kayıtlı tüm şikâyet sayısı."
-                : "Bu hesapla oluşturduğunuz şikâyet sayısı."}
+                ? t("dashboard.stats.total.staffHint")
+                : t("dashboard.stats.total.citizenHint")}
             </div>
           </div>
 
           <div className="stat-card">
-            <div className="stat-label">Bekleyen şikâyet</div>
-            <div className="stat-value">{waiting}</div>
-            <div className="stat-hint">
-              Durumu <strong>Yeni</strong> veya <strong>İncelemede</strong> olan
-              şikâyetler.
+            <div className="stat-label">
+              {t("dashboard.stats.waiting.label")}
             </div>
+            <div className="stat-value">{waiting}</div>
+            <div className="stat-hint">{t("dashboard.stats.waiting.hint")}</div>
           </div>
 
           {isStaffView && (
             <>
               <div className="stat-card">
-                <div className="stat-label">Yapay zekâ kullanılan</div>
+                <div className="stat-label">
+                  {t("dashboard.stats.aiUsed.label")}
+                </div>
                 <div className="stat-value">{aiCount}</div>
                 <div className="stat-hint">
-                  Otomatik özetleme / yönlendirme yapılan şikâyetler.
+                  {t("dashboard.stats.aiUsed.hint")}
                 </div>
               </div>
 
               <div className="stat-card">
-                <div className="stat-label">Mükerrer şikâyetler</div>
+                <div className="stat-label">
+                  {t("dashboard.stats.duplicates.label")}
+                </div>
                 <div className="stat-value">{dupCount}</div>
                 <div className="stat-hint">
-                  Benzer içerikten üretilmiş tekrar şikâyet kayıtları.
+                  {t("dashboard.stats.duplicates.hint")}
                 </div>
               </div>
             </>
@@ -416,7 +444,7 @@ export default function Dashboard() {
         >
           <input
             className="input"
-            placeholder="Metne, vatandaşa veya birime göre ara..."
+            placeholder={t("dashboard.table.searchPlaceholder")}
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
           />
@@ -430,7 +458,7 @@ export default function Dashboard() {
             highlightOnHover
             dense
             pagination
-            noDataComponent="Gösterilecek şikâyet bulunamadı."
+            noDataComponent={t("dashboard.table.noData")}
           />
         </div>
       </div>

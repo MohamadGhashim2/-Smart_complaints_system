@@ -1,4 +1,4 @@
-# complaints/auth_views.py
+# backend/complaints/auth_views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -24,6 +24,11 @@ class MeView(APIView):
                 "can_manage_departments": profile.can_manage_departments,
                 "can_manage_users": profile.can_manage_users,
                 "can_manage_ai_settings": profile.can_manage_ai_settings,
+                # إعدادات رؤية الشكاوي للموظفين
+                "view_scope": profile.view_scope,
+                "allowed_departments": list(
+                    profile.allowed_departments.values("id", "name_tr", "code")
+                ),
             }
         except Profile.DoesNotExist:
             profile_data = None

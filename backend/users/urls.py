@@ -4,19 +4,19 @@ from .views import (
     RegisterView,
     ProfileMeView,
     SystemSettingsView,
-    AdminUsersView,
-    AdminUserDetailView,
+    UserListCreateView,
+    UserDetailView,
 )
 
 urlpatterns = [
-    # للمواطنين
+    # تسجيل / معلوماتي
     path("auth/register/", RegisterView.as_view(), name="user-register"),
-    path("auth/profile/", ProfileMeView.as_view(), name="user-profile"),
+    path("auth/me/", ProfileMeView.as_view(), name="user-me"),
 
     # إعدادات النظام / الذكاء الاصطناعي
     path("settings/", SystemSettingsView.as_view(), name="system-settings"),
 
     # إدارة المستخدمين (admin / manager)
-    path("users/", AdminUsersView.as_view(), name="users-admin-list-create"),
-    path("users/<int:pk>/", AdminUserDetailView.as_view(), name="users-admin-detail"),
+    path("users/", UserListCreateView.as_view(), name="users-admin-list-create"),
+    path("users/<int:pk>/", UserDetailView.as_view(), name="users-admin-detail"),
 ]

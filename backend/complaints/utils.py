@@ -3,16 +3,7 @@ import re
 import unicodedata
 
 def make_fingerprint(text: str) -> str:
-    """
-    نعمل بصمة بسيطة للنص:
-    - lowercase
-    - إزالة التشكيل
-    - إزالة الرموز وعلامات الترقيم
-    - تقسيم لكلمات
-    - إزالة التكرار + ترتيب
-    - أخذ أول 20 كلمة
-    تشتغل مع العربي + التركي + الإنكليزي.
-    """
+    
     if not text:
         return ""
 
@@ -35,9 +26,7 @@ def make_fingerprint(text: str) -> str:
 
 
 def fp_similarity(fp1: str, fp2: str) -> float:
-    """
-    قياس تشابه Jaccard بين بصمتين (0.0 - 1.0)
-    """
+   
     if not fp1 or not fp2:
         return 0.0
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 import { clearTokens } from "../auth";
+import { useTranslation } from "react-i18next";
 
 export default function NewComplaint() {
   const [text, setText] = useState("");
@@ -16,6 +17,7 @@ export default function NewComplaint() {
   const [ok, setOk] = useState("");
 
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const loadMe = async () => {
     try {
@@ -49,7 +51,6 @@ export default function NewComplaint() {
     loadMe();
     loadDepartments();
     loadSettings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const useAiRouting = settings?.use_ai_routing ?? true;
@@ -61,12 +62,12 @@ export default function NewComplaint() {
 
     const cleanText = text.trim();
     if (!cleanText) {
-      setErr("Lütfen şikâyet metnini yazın.");
+      setErr(t("newComplaint.errors.emptyText"));
       return;
     }
 
     if (!useAiRouting && !departmentId) {
-      setErr("Yapay zekâ kapalıyken birim seçmek zorunludur.");
+      setErr(t("newComplaint.errors.departmentRequiredWhenAiOff"));
       return;
     }
 
@@ -79,10 +80,9 @@ export default function NewComplaint() {
     try {
       setSubmitting(true);
       await api.post("/api/v1/complaints/", payload);
-      setOk("Şikâyetiniz başarıyla kaydedildi.");
+      setOk(t("newComplaint.success.created"));
       setText("");
       if (!useAiRouting) setDepartmentId("");
-      // بعد ثانيتين نرجع للداشبورد
       setTimeout(() => navigate("/dashboard"), 1200);
     } catch (error) {
       const status = error?.response?.status;
@@ -97,7 +97,7 @@ export default function NewComplaint() {
       if (status === 400 && error?.response?.data?.detail) {
         setErr(String(error.response.data.detail));
       } else {
-        setErr("Şikâyet oluşturulurken bir hata oluştu.");
+        setErr(t("newComplaint.errors.genericFail"));
       }
     } finally {
       setSubmitting(false);
@@ -107,9 +107,9 @@ export default function NewComplaint() {
   const roleLabel = () => {
     if (!me) return "";
     const r = me.profile?.role;
-    if (r === "manager") return "Yönetici";
-    if (r === "staff") return "Personel";
-    if (r === "citizen") return "Vatandaş";
+    if (r === "manager") return t("usersManagement.roles.manager");
+    if (r === "staff") return t("usersManagement.roles.staff");
+    if (r === "citizen") return t("usersManagement.roles.citizen");
     return "";
   };
 
@@ -119,14 +119,15 @@ export default function NewComplaint() {
         {/* HEADER */}
         <div className="page-header">
           <div>
-            <h2 className="page-title">Yeni şikâyet</h2>
+            <h2 className="page-title">{t("nav.newComplaint")}</h2>
             {me && (
               <p className="page-subtitle">
-                Giriş yapan: <strong>{me.username}</strong>
+                {t("newComplaint.loggedInAs")} <strong>{me.username}</strong>
                 {roleLabel() && (
                   <>
                     {" "}
-                    — Rol: <strong>{roleLabel()}</strong>
+                    — {t("newComplaint.roleLabel")}{" "}
+                    <strong>{roleLabel()}</strong>
                   </>
                 )}
               </p>
@@ -139,7 +140,7 @@ export default function NewComplaint() {
               className="btn btn-ghost"
               onClick={() => navigate("/dashboard")}
             >
-              Geri dön
+              {t("common.back")}
             </button>
           </div>
         </div>
@@ -149,11 +150,8 @@ export default function NewComplaint() {
           {/* MAIN FORM CARD */}
           <div className="card new-complaint-card">
             <div className="card-header">
-              <h3>Şikâyet formu</h3>
-              <p>
-                Lütfen problemi mümkün olduğunca açık bir şekilde Türkçe veya
-                Arapça olarak yazınız.
-              </p>
+              <h3>{t("newComplaint.form.title")}</h3>
+              <p>{t("newComplaint.form.help")}</p>
             </div>
 
             <div className="card-body">
@@ -164,25 +162,25 @@ export default function NewComplaint() {
                 {/* TEXT */}
                 <div className="field">
                   <label className="field-label">
-                    Şikâyet metni <span className="required">*</span>
+                    {t("newComplaint.fields.text")}{" "}
+                    <span className="required">*</span>
                   </label>
                   <textarea
                     className="field-control textarea"
                     rows={8}
-                    placeholder="Örnek: Mahallemizdeki sokak lambaları çalışmıyor, akşamları çok karanlık oluyor..."
+                    placeholder={t("newComplaint.placeholders.text")}
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                   />
                   <div className="field-hint">
-                    Hakaret içeren mesajlar, küfür veya kişisel bilgiler
-                    paylaşmayınız.
+                    {t("newComplaint.hints.noAbuse")}
                   </div>
                 </div>
 
                 {/* DEPARTMENT */}
                 <div className="field">
                   <label className="field-label">
-                    Birim seçimi{" "}
+                    {t("newComplaint.fields.department")}{" "}
                     {!useAiRouting && <span className="required">*</span>}
                   </label>
 
@@ -194,12 +192,14 @@ export default function NewComplaint() {
                     {useAiRouting ? (
                       <>
                         <option value="">
-                          — Otomatik (yapay zekâ yönlendirsin) —
+                          {t("newComplaint.department.auto")}
                         </option>
                         <option disabled>──────────────</option>
                       </>
                     ) : (
-                      <option value="">— Birim seçin —</option>
+                      <option value="">
+                        {t("newComplaint.department.choose")}
+                      </option>
                     )}
 
                     {departments.map((d) => (
@@ -211,8 +211,8 @@ export default function NewComplaint() {
 
                   <div className="field-hint">
                     {useAiRouting
-                      ? "İsterseniz birim seçmeden bırakabilirsiniz, sistem en uygun kuruma yönlendirmeye çalışır."
-                      : "Yapay zekâ yönlendirmesi kapalı olduğu için birim seçmek zorunludur."}
+                      ? t("newComplaint.hints.departmentWithAi")
+                      : t("newComplaint.hints.departmentWithoutAi")}
                   </div>
                 </div>
 
@@ -223,14 +223,16 @@ export default function NewComplaint() {
                     className="btn btn-ghost"
                     onClick={() => navigate("/dashboard")}
                   >
-                    İptal
+                    {t("common.cancel")}
                   </button>
                   <button
                     type="submit"
                     className="btn btn-primary"
                     disabled={submitting}
                   >
-                    {submitting ? "Gönderiliyor..." : "Şikâyeti gönder"}
+                    {submitting
+                      ? t("newComplaint.buttons.submitting")
+                      : t("newComplaint.buttons.submit")}
                   </button>
                 </div>
               </form>
@@ -240,26 +242,24 @@ export default function NewComplaint() {
           {/* SIDE PANEL */}
           <aside className="card new-complaint-side">
             <div className="card-header">
-              <h3>Sistem hakkında</h3>
+              <h3>{t("newComplaint.side.title")}</h3>
             </div>
             <div className="card-body small">
               <ul className="bullet-list">
                 <li>
-                  Şikâyetiniz sisteme kaydedildikten sonra durumunu{" "}
-                  <strong>Şikâyetlerim</strong> sayfasından takip edebilirsiniz.
+                  {t("newComplaint.side.items.trackStatus", {
+                    page: t("nav.title"),
+                  })}
                 </li>
                 <li>
-                  Durumlar: <strong>Yeni</strong> → <strong>İncelemede</strong>{" "}
-                  → <strong>Kapandı</strong>.
+                  {t("newComplaint.side.items.statusFlow", {
+                    new: t("complaints.status.new"),
+                    inReview: t("complaints.status.inReview"),
+                    closed: t("complaints.status.closed"),
+                  })}
                 </li>
-                <li>
-                  Yönetici, şikâyetinizi ilgili birime yönlendirebilir ve
-                  gerekirse sizinle iletişime geçebilir.
-                </li>
-                <li>
-                  Yapay zekâ açıksa benzer şikâyetler tespit edilip{" "}
-                  <strong>mükerrer</strong> olarak işaretlenebilir.
-                </li>
+                <li>{t("newComplaint.side.items.adminCanRoute")}</li>
+                <li>{t("newComplaint.side.items.aiDuplicates")}</li>
               </ul>
             </div>
           </aside>

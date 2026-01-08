@@ -1,3 +1,4 @@
+## Git Ignore Template for Python/Django Projects
 # ---- Python / Django ----
 __pycache__/
 *.py[cod]

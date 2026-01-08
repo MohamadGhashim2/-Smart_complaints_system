@@ -4,6 +4,7 @@ import api from "../api";
 import { useNavigate } from "react-router-dom";
 import { clearTokens } from "../auth";
 import DataTableModule from "react-data-table-component";
+import { useTranslation } from "react-i18next";
 
 const DataTable = DataTableModule.default || DataTableModule;
 
@@ -22,22 +23,24 @@ export default function Departments() {
   const [filterText, setFilterText] = useState("");
 
   const navigate = useNavigate();
-
-  const isStaffOrManager = (user) =>
-    user?.is_staff ||
-    user?.profile?.role === "staff" ||
-    user?.profile?.role === "manager";
+  const { t } = useTranslation();
 
   const getRoleLabel = () => {
     if (!me) return "";
     const role = me.profile?.role;
 
-    if (role === "manager") return "Yönetici";
-    if (role === "staff") return "Personel";
-    if (role === "citizen") return "Vatandaş";
+    if (role === "manager") return t("usersManagement.roles.manager");
+    if (role === "staff") return t("usersManagement.roles.staff");
+    if (role === "citizen") return t("usersManagement.roles.citizen");
 
-    return me.is_staff ? "Yönetici / Personel" : "Vatandaş";
+    return me.is_staff
+      ? t("departments.role.staffOrManager")
+      : t("usersManagement.roles.citizen");
   };
+
+  // ✅ فقط من عنده صلاحية manage_departments
+  const canManageDepartments = (user) =>
+    user?.is_superuser || user?.profile?.can_manage_departments;
 
   const loadMe = async () => {
     try {
@@ -51,7 +54,7 @@ export default function Departments() {
         clearTokens();
         navigate("/");
       } else {
-        setErr("Kullanıcı bilgileri alınamadı.");
+        setErr(t("departments.errors.meLoad"));
       }
       setLoading(false);
       return null;
@@ -69,15 +72,13 @@ export default function Departments() {
     } catch (e) {
       const status = e?.response?.status;
       console.log("DEPS ERROR:", status, e?.response?.data);
-      if (status === 401) {
+      if (status === 401 || status === 403) {
         clearTokens();
         navigate("/");
+        setErr(t("departments.errors.noAccess"));
         return;
-      }
-      if (status === 403) {
-        setErr("Bu sayfa için yetkiniz yok.");
       } else {
-        setErr("Birimler yüklenemedi.");
+        setErr(t("departments.errors.loadFailed"));
       }
     } finally {
       setLoading(false);
@@ -90,9 +91,10 @@ export default function Departments() {
       const u = await loadMe();
       if (!u) return;
 
-      if (!isStaffOrManager(u)) {
-        // مواطن → نوقف تحميل الأقسام
-        setLoading(false);
+      if (!canManageDepartments(u)) {
+        alert(t("departments.errors.noAccessAlert"));
+        clearTokens();
+        navigate("/");
         return;
       }
 
@@ -114,7 +116,7 @@ export default function Departments() {
     setOk("");
 
     if (!form.name_tr.trim() || !form.code.trim()) {
-      setErr("Türkçe ad ve kod zorunludur.");
+      setErr(t("departments.errors.validationNameCodeRequired"));
       return;
     }
 
@@ -127,19 +129,23 @@ export default function Departments() {
     try {
       if (editing) {
         await api.patch(`/api/v1/departments/${editing.id}/`, payload);
-        setOk("Birim başarıyla güncellendi.");
+        setOk(t("departments.success.updated"));
       } else {
         await api.post(`/api/v1/departments/`, payload);
-        setOk("Yeni birim oluşturuldu.");
+        setOk(t("departments.success.created"));
       }
       resetForm();
       await loadDepartments();
     } catch (e2) {
       console.log("SAVE DEP ERROR:", e2?.response?.status, e2?.response?.data);
       if (e2?.response?.data) {
-        setErr("Kaydetme hatası: " + JSON.stringify(e2.response.data));
+        setErr(
+          t("departments.errors.saveFailedWithDetails", {
+            details: JSON.stringify(e2.response.data),
+          })
+        );
       } else {
-        setErr("Birim kaydedilemedi.");
+        setErr(t("departments.errors.saveFailed"));
       }
     }
   };
@@ -155,52 +161,19 @@ export default function Departments() {
   };
 
   const remove = async (d) => {
-    if (!window.confirm(`"${d.name_tr}" birimini silmek istiyor musunuz?`))
+    if (!window.confirm(t("departments.confirm.delete", { name: d.name_tr })))
       return;
     setErr("");
     setOk("");
     try {
       await api.delete(`/api/v1/departments/${d.id}/`);
-      setOk("Birim silindi.");
+      setOk(t("departments.success.deleted"));
       await loadDepartments();
     } catch (e) {
       console.log("DELETE ERROR:", e?.response?.status, e?.response?.data);
-      setErr("Birim silinemedi.");
+      setErr(t("departments.errors.deleteFailed"));
     }
   };
-
-  const staffView = me && isStaffOrManager(me); // هل المستخدم مدير/موظف؟
-
-  // مواطن يحاول يفتح صفحة الأقسام
-  if (!loading && me && !staffView) {
-    return (
-      <div className="page-shell">
-        <div className="page-inner">
-          <div className="page-header">
-            <div>
-              <h2 className="page-title">Birimler</h2>
-              <p className="page-subtitle">
-                Bu sayfa sadece <strong>yönetici</strong> ve{" "}
-                <strong>belediye personeli</strong> için.
-              </p>
-            </div>
-            <div className="page-actions">
-              <button
-                className="btn btn-secondary"
-                onClick={() => navigate("/dashboard")}
-              >
-                Geri
-              </button>
-            </div>
-          </div>
-
-          <div className="alert error">
-            Yetkiniz olmadığı için birimleri görüntüleyemezsiniz.
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // ====== Filtered departments for DataTable ======
   const filteredDeps = deps.filter((d) => {
@@ -217,34 +190,34 @@ export default function Departments() {
   // ====== DataTable columns ======
   const columns = [
     {
-      name: "ID",
+      name: t("departments.table.columns.id"),
       selector: (row) => row.id,
       sortable: true,
       width: "80px",
     },
     {
-      name: "Türkçe ad",
+      name: t("departments.table.columns.name_tr"),
       selector: (row) => row.name_tr,
       sortable: true,
       grow: 1.6,
       wrap: true,
     },
     {
-      name: "Kod",
+      name: t("departments.table.columns.code"),
       selector: (row) => row.code,
       sortable: true,
       width: "140px",
       cell: (row) => <strong>{row.code}</strong>,
     },
     {
-      name: "Arapça ad",
+      name: t("departments.table.columns.name_ar"),
       selector: (row) => row.name_ar || "—",
       sortable: true,
       grow: 1.3,
       wrap: true,
     },
     {
-      name: "İşlemler",
+      name: t("departments.table.columns.actions"),
       width: "170px",
       cell: (row) => (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -254,7 +227,7 @@ export default function Departments() {
             onClick={() => startEdit(row)}
             style={{ padding: "4px 10px", fontSize: 12 }}
           >
-            Düzenle
+            {t("common.edit")}
           </button>
           <button
             type="button"
@@ -262,7 +235,7 @@ export default function Departments() {
             style={{ color: "#f97373", padding: "4px 10px", fontSize: 12 }}
             onClick={() => remove(row)}
           >
-            Sil
+            {t("common.delete")}
           </button>
         </div>
       ),
@@ -278,15 +251,12 @@ export default function Departments() {
         {/* Üst başlık */}
         <div className="page-header">
           <div>
-            <h2 className="page-title">Birimler</h2>
-            <p className="page-subtitle">
-              Belediyede kullanılan hizmet birimlerini ekleyin, güncelleyin ve
-              kaldırın.
-            </p>
+            <h2 className="page-title">{t("departments.title")}</h2>
+            <p className="page-subtitle">{t("departments.subtitle")}</p>
             {me && (
               <p className="page-subtitle small">
-                Giriş yapan: <strong>{me.username}</strong> — Rol:{" "}
-                <strong>{getRoleLabel()}</strong>
+                {t("departments.loggedInAs")} <strong>{me.username}</strong> —{" "}
+                {t("departments.roleLabel")} <strong>{getRoleLabel()}</strong>
               </p>
             )}
           </div>
@@ -297,14 +267,14 @@ export default function Departments() {
               type="button"
               onClick={() => navigate("/dashboard")}
             >
-              Geri
+              {t("common.back")}
             </button>
             <button
               className="btn btn-secondary"
               type="button"
               onClick={loadDepartments}
             >
-              Yenile
+              {t("common.refresh")}
             </button>
           </div>
         </div>
@@ -316,7 +286,9 @@ export default function Departments() {
         <div className="departments-form-card">
           <div className="departments-form-header">
             <h3 className="departments-form-title">
-              {editing ? `Birim düzenle (#${editing.id})` : "Yeni birim ekle"}
+              {editing
+                ? t("departments.form.titleEdit", { id: editing.id })
+                : t("departments.form.titleNew")}
             </h3>
             {editing && (
               <button
@@ -324,7 +296,7 @@ export default function Departments() {
                 className="btn btn-ghost"
                 onClick={resetForm}
               >
-                İptal et
+                {t("common.cancel")}
               </button>
             )}
           </div>
@@ -335,38 +307,38 @@ export default function Departments() {
             autoComplete="off"
           >
             <div className="form-field">
-              <label>Türkçe ad *</label>
+              <label>{t("departments.fields.name_tr")} *</label>
               <input
                 className="input"
                 value={form.name_tr}
                 onChange={(e) => onChange("name_tr", e.target.value)}
-                placeholder="Örn. Belediye"
+                placeholder={t("departments.placeholders.name_tr")}
               />
             </div>
 
             <div className="form-field">
-              <label>Kod *</label>
+              <label>{t("departments.fields.code")} *</label>
               <input
                 className="input"
                 value={form.code}
                 onChange={(e) => onChange("code", e.target.value)}
-                placeholder="Örn. MUNIC, HEALTH"
+                placeholder={t("departments.placeholders.code")}
               />
             </div>
 
             <div className="form-field">
-              <label>Arapça ad (isteğe bağlı)</label>
+              <label>{t("departments.fields.name_ar_optional")}</label>
               <input
                 className="input"
                 value={form.name_ar}
                 onChange={(e) => onChange("name_ar", e.target.value)}
-                placeholder="مثال: البلدية"
+                placeholder={t("departments.placeholders.name_ar")}
               />
             </div>
 
             <div className="form-actions">
               <button type="submit" className="btn btn-primary">
-                {editing ? "Kaydet" : "Oluştur"}
+                {editing ? t("common.save") : t("common.create")}
               </button>
             </div>
           </form>
@@ -374,10 +346,10 @@ export default function Departments() {
 
         {/* Tablo + DataTable */}
         {loading ? (
-          <p>Yükleniyor...</p>
+          <p>{t("common.loading")}</p>
         ) : deps.length === 0 ? (
           <p style={{ color: "#9ca3af", marginTop: 16 }}>
-            Henüz birim tanımlanmamış.
+            {t("departments.empty")}
           </p>
         ) : (
           <>
@@ -390,7 +362,7 @@ export default function Departments() {
             >
               <input
                 className="input"
-                placeholder="Ada, koda veya Arapça ada göre ara..."
+                placeholder={t("departments.search.placeholder")}
                 value={filterText}
                 onChange={(e) => setFilterText(e.target.value)}
               />
@@ -404,7 +376,7 @@ export default function Departments() {
                 highlightOnHover
                 dense
                 pagination
-                noDataComponent="Gösterilecek birim bulunamadı."
+                noDataComponent={t("departments.table.noData")}
               />
             </div>
           </>

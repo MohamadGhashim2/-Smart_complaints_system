@@ -16,8 +16,58 @@ from .ai_classifier import classify_department_id
 from .ai_summary import summarize_complaint
 from .utils import make_fingerprint, fp_similarity
 from django.utils import timezone
+from datetime import timedelta
+from users.models import Profile
 
-SIM_THRESHOLD = 0.7  
+SIM_THRESHOLD = 0.7
+
+
+def get_complaints_queryset_for_user(user):
+    """
+    يرجّع queryset الشكاوي المسموحة لهذا المستخدم حسب:
+    - role (citizen / staff / manager)
+    - profile.view_scope
+    - profile.allowed_departments
+    """
+    qs = Complaint.objects.all()
+
+    if not user.is_authenticated:
+        return Complaint.objects.none()
+
+    try:
+        profile = user.profile
+    except Profile.DoesNotExist:
+        profile = None
+
+    role = (
+        (profile.role if profile and profile.role else None)
+        or ("staff" if user.is_staff else "citizen")
+    )
+
+    # المواطن → فقط شكاويه
+    if role == "citizen" and not user.is_staff:
+        return qs.filter(user=user)
+
+    # موظف / مدير
+    if profile:
+        scope = getattr(profile, "view_scope", "all") or "all"
+
+        if scope == "unassigned":
+            # موظف خاص فقط بالشكاوي التي لم تُعيّن لوحدة
+            return qs.filter(department__isnull=True)
+
+        if scope == "assigned":
+            # موظف يرى فقط الشكاوي التابعة لوحدات محددة
+            dep_ids = list(
+                profile.allowed_departments.values_list("id", flat=True)
+            )
+            if dep_ids:
+                return qs.filter(department_id__in=dep_ids)
+            # ما في أي وحدة معيّنة → ما يشوف شي
+            return Complaint.objects.none()
+
+    # افتراضي: يشوف كل الشكاوي (مثلاً مدير عام بدون تقييد)
+    return qs
 
 
 class DepartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -34,7 +84,10 @@ class DepartmentListCreateView(generics.ListCreateAPIView):
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
 class ComplaintListCreateView(generics.ListCreateAPIView):
-    queryset = Complaint.objects.all().order_by("-created_at")
+    """
+    - GET: يرجّع الشكاوي حسب صلاحيات المستخدم (get_complaints_queryset_for_user)
+    - POST: ينشئ شكوى جديدة مع منطق الـ AI والـ duplicate detection
+    """
     serializer_class = ComplaintSerializer
     permission_classes = [IsAuthenticated]
 
@@ -43,28 +96,15 @@ class ComplaintListCreateView(generics.ListCreateAPIView):
     ordering_fields = ["created_at"]
 
     def get_queryset(self):
-        qs = Complaint.objects.all().order_by("-created_at")
         user = self.request.user
-
-        if user.is_authenticated and user.is_staff:
-            return qs
-
-        if user.is_authenticated:
-            return qs.filter(user=user)
-
-        return qs.none()
+        # ⚠️ هنا التغيير المهم: نستخدم الدالة الجديدة بدلاً من if user.is_staff ...
+        return get_complaints_queryset_for_user(user).order_by("-created_at")
 
     def perform_create(self, serializer):
-        """
-        إنشاء شكوى جديدة مع:
-        - حساب fingerprint
-        - البحث عن شكوى مشابهة
-        - لو مكررة: ننسخ القسم + الملخص + الثقة بدون استعمال AI
-        - لو جديدة: نستخدم AI للتلخيص والتصنيف
-        """
         user = self.request.user if self.request.user.is_authenticated else None
         raw_text = serializer.validated_data.get("text", "") or ""
 
+        # بصمة للنص لتمييز الـ duplicate
         fp = make_fingerprint(raw_text)
 
         obj = serializer.save(
@@ -76,6 +116,8 @@ class ComplaintListCreateView(generics.ListCreateAPIView):
         best_sim = 0.0
 
         if fp:
+            recent_since = timezone.now() - timedelta(days=2)
+
             existing_qs = (
                 Complaint.objects
                 .exclude(pk=obj.pk)
@@ -84,22 +126,18 @@ class ComplaintListCreateView(generics.ListCreateAPIView):
                 .filter(
                     models.Q(department__isnull=False)
                     | models.Q(summary__isnull=False)
-                    | models.Q(confidence__isnull=False)
+                    | models.Q(confidence__isnull=False),
+                    created_at__gte=recent_since,
                 )
             )
 
             for other in existing_qs:
                 sim = fp_similarity(fp, other.fingerprint or "")
-                print(f"[SIM] new={obj.id} vs existing={other.id} -> {sim:.3f}")
                 if sim > best_sim:
                     best_sim = sim
                     best_existing = other
 
-            print(
-                f"[SIM] BEST for new={obj.id}: "
-                f"best_existing={getattr(best_existing, 'id', None)}, best_sim={best_sim:.3f}"
-            )
-
+        # معالجة الـ duplicate
         if best_existing and best_sim >= SIM_THRESHOLD:
             base = best_existing.base_complaint or best_existing
 
@@ -109,14 +147,16 @@ class ComplaintListCreateView(generics.ListCreateAPIView):
                 ).count()
 
                 obj.base_complaint = base
-                obj.duplicate_index = existing_dup_count + 1  
-                obj.used_ai = False  
+                obj.duplicate_index = existing_dup_count + 1
+                obj.used_ai = False
                 obj.department = base.department
                 obj.summary = base.summary
                 obj.confidence = base.confidence
 
                 obj.save()
-                return  
+                return
+
+        # لو ما كان duplicate نطبق الـ AI
         used_ai = False
 
         if obj.text and not obj.summary:
@@ -139,21 +179,17 @@ class ComplaintListCreateView(generics.ListCreateAPIView):
 
 
 class ComplaintDetailView(generics.RetrieveUpdateAPIView):
-    queryset = Complaint.objects.all()
+    """
+    - GET: يرجّع شكوى واحدة حسب صلاحيات المستخدم (نفس منطق القائمة)
+    - PATCH: فقط staff يعدّل (مثل قبل)
+    """
     serializer_class = ComplaintSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = Complaint.objects.all()
         user = self.request.user
-
-        if user.is_authenticated and user.is_staff:
-            return qs
-
-        if user.is_authenticated:
-            return qs.filter(user=user)
-
-        return qs.none()
+        # ⚠️ نفس الفكرة: نقيّد الوصول حسب view_scope و allowed_departments
+        return get_complaints_queryset_for_user(user)
 
     def perform_update(self, serializer):
         user = self.request.user
@@ -161,6 +197,7 @@ class ComplaintDetailView(generics.RetrieveUpdateAPIView):
         data = serializer.validated_data
 
         if not user.is_staff:
+            # غير الموظفين ما يعدّلوا
             return
 
         old_status = instance.status

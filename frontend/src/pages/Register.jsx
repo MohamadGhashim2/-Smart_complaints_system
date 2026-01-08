@@ -2,6 +2,7 @@
 import { useState } from "react";
 import api from "../api";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 export default function Register() {
   const [username, setUsername] = useState("");
@@ -13,6 +14,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,17 +22,17 @@ export default function Register() {
     setOk("");
 
     if (!username.trim() || !password || !password2 || !nationalId) {
-      setErr("Lütfen tüm alanları doldurun.");
+      setErr(t("register.errors.fillAllFields"));
       return;
     }
 
     if (password !== password2) {
-      setErr("Şifreler eşleşmiyor.");
+      setErr(t("register.errors.passwordsDontMatch"));
       return;
     }
 
     if (nationalId.length !== 11 || !/^\d{11}$/.test(nationalId)) {
-      setErr("TC kimlik numarası 11 haneli olmalıdır.");
+      setErr(t("register.errors.nationalId11Digits"));
       return;
     }
 
@@ -45,8 +47,7 @@ export default function Register() {
       setLoading(true);
       const res = await api.post("/api/v1/auth/register/", payload);
       console.log("REGISTER RESPONSE:", res.data);
-      setOk("Kayıt başarılı. Şimdi giriş yapabilirsiniz.");
-      // بعد ثانية تقريباً نرجّع المستخدم لصفحة الدخول
+      setOk(t("register.success.registered"));
       setTimeout(() => navigate("/"), 1200);
     } catch (error) {
       console.log(
@@ -61,9 +62,9 @@ export default function Register() {
         else if (d.non_field_errors) setErr(String(d.non_field_errors));
         else if (d.username) setErr(String(d.username));
         else if (d.national_id) setErr(String(d.national_id));
-        else setErr("Kayıt başarısız. Lütfen tekrar deneyin.");
+        else setErr(t("register.errors.genericFail"));
       } else {
-        setErr("Kayıt başarısız. Lütfen tekrar deneyin.");
+        setErr(t("register.errors.genericFail"));
       }
     } finally {
       setLoading(false);
@@ -73,77 +74,87 @@ export default function Register() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-hero-kicker">Akıllı Belediye</div>
+        <div className="auth-hero-kicker">{t("register.heroKicker")}</div>
 
         <h1 className="auth-hero-title">
-          Vatandaş <span className="auth-hero-highlight">Kaydı</span>
+          {t("register.heroTitle.main")}{" "}
+          <span className="auth-hero-highlight">
+            {t("register.heroTitle.highlight")}
+          </span>
         </h1>
 
-        <p className="auth-hero-text">
-          Türk vatandaşları için çevrim içi şikâyet başvurusu. Lütfen geçerli
-          bir kullanıcı adı ve 11 haneli TC kimlik numarası girin.
-        </p>
+        <p className="auth-hero-text">{t("register.heroText")}</p>
 
         {err && <div className="alert error">{err}</div>}
         {ok && <div className="alert success">{ok}</div>}
 
         <form className="form" onSubmit={handleSubmit}>
           <div className="field-group">
-            <label className="field-label">Kullanıcı adı</label>
+            <label className="field-label">
+              {t("register.fields.username")}
+            </label>
             <input
               className="input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Kullanıcı adınızı girin"
+              placeholder={t("register.placeholders.username")}
             />
           </div>
 
           <div className="field-group">
-            <label className="field-label">TC kimlik numarası</label>
+            <label className="field-label">
+              {t("register.fields.nationalId")}
+            </label>
             <input
               className="input"
               maxLength={11}
               value={nationalId}
               onChange={(e) => setNationalId(e.target.value)}
-              placeholder="11 haneli kimlik numarası"
+              placeholder={t("register.placeholders.nationalId")}
             />
           </div>
 
           <div className="field-group">
-            <label className="field-label">Şifre</label>
+            <label className="field-label">
+              {t("register.fields.password")}
+            </label>
             <input
               className="input"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Şifre belirleyin"
+              placeholder={t("register.placeholders.password")}
             />
           </div>
 
           <div className="field-group">
-            <label className="field-label">Şifre (tekrar)</label>
+            <label className="field-label">
+              {t("register.fields.passwordAgain")}
+            </label>
             <input
               className="input"
               type="password"
               value={password2}
               onChange={(e) => setPassword2(e.target.value)}
-              placeholder="Şifreyi tekrar yazın"
+              placeholder={t("register.placeholders.passwordAgain")}
             />
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? "Kayıt yapılıyor..." : "Kayıt ol"}
+            {loading
+              ? t("register.buttons.submitting")
+              : t("register.buttons.submit")}
           </button>
         </form>
 
         <p className="auth-meta-small">
-          Zaten hesabınız var mı?{" "}
+          {t("register.meta.haveAccountQuestion")}{" "}
           <button
             type="button"
             className="link-button"
             onClick={() => navigate("/")}
           >
-            Giriş yap
+            {t("register.buttons.login")}
           </button>
         </p>
       </div>

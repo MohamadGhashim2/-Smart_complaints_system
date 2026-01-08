@@ -2,38 +2,17 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import { useNavigate } from "react-router-dom";
+import { clearTokens } from "../auth";
+import { useTranslation } from "react-i18next";
 
-// نحول كل الأرقام العربية إلى إنجليزية + الفاصلة العشرية
-const normalizeDigits = (value) => {
-  if (value === null || value === undefined) return "";
-  let v = String(value);
-
-  const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
-  const latinDigits = "0123456789";
-
-  let out = "";
-  for (const ch of v) {
-    const idx = arabicDigits.indexOf(ch);
-    if (idx !== -1) {
-      out += latinDigits[idx]; // رقم عربي → إنجليزي
-    } else if (ch === "٫" || ch === "،") {
-      out += "."; // الفاصلة العربية → نقطة
-    } else {
-      out += ch;
-    }
-  }
-  return out;
-};
-
-// نطبّق النورمالايز على القيم الرقمية القادمة من الـ API
 const normalizeSettingsFromApi = (raw) => {
   if (!raw) return null;
   return {
     ...raw,
-    ai_min_confidence: normalizeDigits(raw.ai_min_confidence),
-    similarity_threshold: normalizeDigits(raw.similarity_threshold),
-    spam_max_per_day: normalizeDigits(raw.spam_max_per_day),
-    spam_max_per_hour: normalizeDigits(raw.spam_max_per_hour),
+    ai_min_confidence: raw.ai_min_confidence,
+    similarity_threshold: raw.similarity_threshold,
+    spam_max_per_day: raw.spam_max_per_day,
+    spam_max_per_hour: raw.spam_max_per_hour,
   };
 };
 
@@ -44,11 +23,23 @@ export default function SystemSettings() {
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const load = async () => {
       setErr("");
+      setLoading(true);
       try {
+        const meRes = await api.get("/api/v1/auth/me/");
+        const me = meRes.data;
+        const canManageAi =
+          me?.is_superuser || me?.profile?.can_manage_ai_settings;
+        if (!canManageAi) {
+          setErr(t("systemSettings.errors.onlyAdmins"));
+          clearTokens();
+          navigate("/");
+          return;
+        }
         const res = await api.get("/api/v1/settings/");
         setSettings(normalizeSettingsFromApi(res.data));
       } catch (e) {
@@ -59,16 +50,18 @@ export default function SystemSettings() {
         );
         const status = e?.response?.status;
         if (status === 401 || status === 403) {
-          setErr("Bu sayfaya sadece yöneticiler erişebilir.");
+          setErr(t("systemSettings.errors.onlyAdmins"));
+          clearTokens();
+          navigate("/");
         } else {
-          setErr("Ayarlar yüklenemedi.");
+          setErr(t("systemSettings.errors.loadFailed"));
         }
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, []);
+  }, [navigate, t]);
 
   const onChangeBool = (key) => (e) => {
     const checked = e.target.checked;
@@ -76,12 +69,10 @@ export default function SystemSettings() {
   };
 
   const onChangeNumber = (key) => (e) => {
-    // هنا نحول الدخل فورًا من ٠١٢٣… إلى 0123…
     const raw = e.target.value;
-    const normalized = normalizeDigits(raw);
     setSettings((prev) => ({
       ...prev,
-      [key]: normalized,
+      [key]: raw,
     }));
   };
 
@@ -98,32 +89,23 @@ export default function SystemSettings() {
         use_ai_summary: settings.use_ai_summary,
         use_ai_routing: settings.use_ai_routing,
         use_duplicate_detection: settings.use_duplicate_detection,
-        ai_min_confidence: Number(
-          normalizeDigits(settings.ai_min_confidence) || 0
-        ),
-        similarity_threshold: Number(
-          normalizeDigits(settings.similarity_threshold) || 0
-        ),
-        spam_max_per_day: Number(
-          normalizeDigits(settings.spam_max_per_day) || 0
-        ),
-        spam_max_per_hour: Number(
-          normalizeDigits(settings.spam_max_per_hour) || 0
-        ),
+        ai_min_confidence: Number(settings.ai_min_confidence || 0),
+        similarity_threshold: Number(settings.similarity_threshold || 0),
+        spam_max_per_day: Number(settings.spam_max_per_day || 0),
+        spam_max_per_hour: Number(settings.spam_max_per_hour || 0),
         allow_citizen_registration: settings.allow_citizen_registration,
       };
 
       const res = await api.patch("/api/v1/settings/", payload);
-      // نعيد تحميلها ونطبعها من جديد بنسخة نظيفة
       setSettings(normalizeSettingsFromApi(res.data));
-      setOk("Ayarlar başarıyla kaydedildi.");
+      setOk(t("systemSettings.saveSuccess"));
     } catch (e) {
       console.log(
         "SETTINGS SAVE ERROR:",
         e?.response?.status,
         e?.response?.data
       );
-      setErr("Ayarlar kaydedilemedi.");
+      setErr(t("systemSettings.errors.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -133,8 +115,8 @@ export default function SystemSettings() {
     return (
       <div className="page-shell">
         <div className="page-inner">
-          <h2 className="page-title">Yapay zekâ & sistem ayarları</h2>
-          <p>Yükleniyor...</p>
+          <h2 className="page-title">{t("systemSettings.title")}</h2>
+          <p>{t("systemSettings.loading")}</p>
         </div>
       </div>
     );
@@ -144,14 +126,14 @@ export default function SystemSettings() {
     return (
       <div className="page-shell">
         <div className="page-inner">
-          <h2 className="page-title">Yapay zekâ & sistem ayarları</h2>
+          <h2 className="page-title">{t("systemSettings.title")}</h2>
           {err && <div className="alert error">{err}</div>}
           <button
             className="btn btn-ghost"
             type="button"
             onClick={() => navigate("/dashboard")}
           >
-            Geri
+            {t("systemSettings.back")}
           </button>
         </div>
       </div>
@@ -163,11 +145,8 @@ export default function SystemSettings() {
       <div className="page-inner">
         <div className="page-header">
           <div>
-            <h2 className="page-title">Yapay zekâ &amp; sistem ayarları</h2>
-            <p className="page-subtitle">
-              Şikâyetlerin yönlendirilmesi, özetlenmesi ve spam filtreleme
-              eşiğini buradan ayarlayın.
-            </p>
+            <h2 className="page-title">{t("systemSettings.title")}</h2>
+            <p className="page-subtitle">{t("systemSettings.subtitle")}</p>
           </div>
           <div className="page-actions">
             <button
@@ -175,7 +154,7 @@ export default function SystemSettings() {
               type="button"
               onClick={() => navigate("/dashboard")}
             >
-              Geri
+              {t("systemSettings.back")}
             </button>
           </div>
         </div>
@@ -186,10 +165,11 @@ export default function SystemSettings() {
         <form onSubmit={save} className="settings-form">
           {/* AI özellikleri */}
           <section className="settings-section">
-            <h3 className="settings-title">Yapay zekâ özellikleri</h3>
+            <h3 className="settings-title">
+              {t("systemSettings.sections.aiFeatures.title")}
+            </h3>
             <p className="settings-help">
-              Şikâyet metinlerine göre özet çıkarma ve otomatik birim
-              yönlendirmeyi isteğe göre açıp kapatabilirsiniz.
+              {t("systemSettings.sections.aiFeatures.help")}
             </p>
 
             <label className="settings-check">
@@ -198,7 +178,7 @@ export default function SystemSettings() {
                 checked={!!settings.use_ai_summary}
                 onChange={onChangeBool("use_ai_summary")}
               />
-              AI özetleme özelliğini kullan
+              {t("systemSettings.fields.use_ai_summary")}
             </label>
 
             <label className="settings-check">
@@ -207,7 +187,7 @@ export default function SystemSettings() {
                 checked={!!settings.use_ai_routing}
                 onChange={onChangeBool("use_ai_routing")}
               />
-              Şikâyetleri otomatik olarak ilgili birime yönlendir
+              {t("systemSettings.fields.use_ai_routing")}
             </label>
 
             <label className="settings-check">
@@ -216,21 +196,24 @@ export default function SystemSettings() {
                 checked={!!settings.use_duplicate_detection}
                 onChange={onChangeBool("use_duplicate_detection")}
               />
-              Benzer şikâyetleri (duplicate) tespit et
+              {t("systemSettings.fields.use_duplicate_detection")}
             </label>
           </section>
 
           {/* Eşik değerleri */}
           <section className="settings-section">
-            <h3 className="settings-title">Eşik değerleri</h3>
+            <h3 className="settings-title">
+              {t("systemSettings.sections.thresholds.title")}
+            </h3>
             <p className="settings-help">
-              Yapay zekânın kararı ne kadar güçlü olduğunda dikkate alınacağını
-              belirleyin.
+              {t("systemSettings.sections.thresholds.help")}
             </p>
 
             <div className="settings-grid-2">
               <div className="field-group">
-                <label className="field-label">AI güven eşiği (0–1)</label>
+                <label className="field-label">
+                  {t("systemSettings.fields.ai_min_confidence.label")}
+                </label>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -240,14 +223,13 @@ export default function SystemSettings() {
                   onChange={onChangeNumber("ai_min_confidence")}
                 />
                 <p className="field-hint">
-                  Örn. 0.6 → güven %60 altında ise AI birim önerisi
-                  kullanılmasın.
+                  {t("systemSettings.fields.ai_min_confidence.hint")}
                 </p>
               </div>
 
               <div className="field-group">
                 <label className="field-label">
-                  Duplicate benzerlik eşiği (0–1)
+                  {t("systemSettings.fields.similarity_threshold.label")}
                 </label>
                 <input
                   type="text"
@@ -258,7 +240,7 @@ export default function SystemSettings() {
                   onChange={onChangeNumber("similarity_threshold")}
                 />
                 <p className="field-hint">
-                  Örn. 0.8 → benzerlik %80 üzerindeyse mükerrer kabul edilir.
+                  {t("systemSettings.fields.similarity_threshold.hint")}
                 </p>
               </div>
             </div>
@@ -266,15 +248,18 @@ export default function SystemSettings() {
 
           {/* Spam kuralları */}
           <section className="settings-section">
-            <h3 className="settings-title">Spam kuralları</h3>
+            <h3 className="settings-title">
+              {t("systemSettings.sections.spamRules.title")}
+            </h3>
             <p className="settings-help">
-              Aynı kullanıcının kısa sürede çok sayıda şikâyet göndermesini
-              sınırlandırın.
+              {t("systemSettings.sections.spamRules.help")}
             </p>
 
             <div className="settings-grid-2">
               <div className="field-group">
-                <label className="field-label">Günlük maksimum şikâyet</label>
+                <label className="field-label">
+                  {t("systemSettings.fields.spam_max_per_day.label")}
+                </label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -284,12 +269,14 @@ export default function SystemSettings() {
                   onChange={onChangeNumber("spam_max_per_day")}
                 />
                 <p className="field-hint">
-                  Bu sınır aşıldığında kullanıcı geçici olarak spam sayılır.
+                  {t("systemSettings.fields.spam_max_per_day.hint")}
                 </p>
               </div>
 
               <div className="field-group">
-                <label className="field-label">Saatlik maksimum şikâyet</label>
+                <label className="field-label">
+                  {t("systemSettings.fields.spam_max_per_hour.label")}
+                </label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -299,7 +286,7 @@ export default function SystemSettings() {
                   onChange={onChangeNumber("spam_max_per_hour")}
                 />
                 <p className="field-hint">
-                  Çok yoğun arka arkaya şikâyetleri engellemek için.
+                  {t("systemSettings.fields.spam_max_per_hour.hint")}
                 </p>
               </div>
             </div>
@@ -307,10 +294,11 @@ export default function SystemSettings() {
 
           {/* Vatandaş kayıt ayarı */}
           <section className="settings-section">
-            <h3 className="settings-title">Vatandaş hesapları</h3>
+            <h3 className="settings-title">
+              {t("systemSettings.sections.citizenAccounts.title")}
+            </h3>
             <p className="settings-help">
-              Vatandaşların kendilerinin kayıt oluşturup oluşturamayacağını
-              belirleyin.
+              {t("systemSettings.sections.citizenAccounts.help")}
             </p>
 
             <label className="settings-check">
@@ -319,13 +307,15 @@ export default function SystemSettings() {
                 checked={!!settings.allow_citizen_registration}
                 onChange={onChangeBool("allow_citizen_registration")}
               />
-              Vatandaşların sistem üzerinden kayıt olmasına izin ver
+              {t("systemSettings.fields.allow_citizen_registration")}
             </label>
           </section>
 
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Kaydediliyor..." : "Ayarları kaydet"}
+              {saving
+                ? t("systemSettings.buttons.saving")
+                : t("systemSettings.buttons.save")}
             </button>
           </div>
         </form>

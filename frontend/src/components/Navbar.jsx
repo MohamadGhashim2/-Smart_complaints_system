@@ -4,6 +4,64 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import api from "../api";
 import { clearTokens, getAccess } from "../auth";
 import { useTheme } from "../hooks/useTheme";
+import { useTranslation } from "react-i18next";
+
+function LanguageSwitcher() {
+  const { i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+
+  const currentLabel = (i18n.language || "tr").slice(0, 2).toUpperCase();
+
+  const applyDirAndLang = (lng) => {
+    const dir = lng === "ar" ? "rtl" : "ltr";
+    document.documentElement.dir = dir;
+    document.documentElement.lang = lng;
+  };
+
+  const changeLang = (lng) => {
+    i18n.changeLanguage(lng);
+    applyDirAndLang(lng);
+    setOpen(false);
+  };
+
+  return (
+    <div className="nav-lang-wrapper">
+      <button
+        type="button"
+        className="btn btn-ghost nav-lang-toggle"
+        onClick={() => setOpen((o) => !o)}
+      >
+        {currentLabel} ▾
+      </button>
+
+      {open && (
+        <div className="nav-lang-menu">
+          <button
+            type="button"
+            className="nav-lang-option"
+            onClick={() => changeLang("tr")}
+          >
+            TR
+          </button>
+          <button
+            type="button"
+            className="nav-lang-option"
+            onClick={() => changeLang("ar")}
+          >
+            AR
+          </button>
+          <button
+            type="button"
+            className="nav-lang-option"
+            onClick={() => changeLang("en")}
+          >
+            EN
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Navbar() {
   const [me, setMe] = useState(null);
@@ -11,12 +69,13 @@ export default function Navbar() {
 
   const location = useLocation();
   const navigate = useNavigate();
-
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const token = getAccess();
     if (!token) {
+      setMe(null);
       setLoadingMe(false);
       return;
     }
@@ -37,7 +96,7 @@ export default function Navbar() {
     };
 
     fetchMe();
-  }, []);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     clearTokens();
@@ -49,6 +108,16 @@ export default function Navbar() {
     me?.is_staff ||
     me?.profile?.role === "staff" ||
     me?.profile?.role === "manager";
+
+  const profilePerms = me?.profile || {};
+
+  const canManageDepartments =
+    me?.is_superuser || profilePerms.can_manage_departments;
+
+  const canManageUsers = me?.is_superuser || profilePerms.can_manage_users;
+
+  const canManageAiSettings =
+    me?.is_superuser || profilePerms.can_manage_ai_settings;
 
   const activeClass = (path) =>
     location.pathname === path ? "nav-link active" : "nav-link";
@@ -70,7 +139,7 @@ export default function Navbar() {
             className="nav-logo-image"
           />
           <div className="nav-brand">
-            <div className="nav-subtitle">Şikâyetlerim</div>
+            <div className="nav-subtitle">{t("nav.title")}</div>
           </div>
         </div>
 
@@ -79,30 +148,36 @@ export default function Navbar() {
           {me && (
             <>
               <Link to="/dashboard" className={activeClass("/dashboard")}>
-                {isStaffOrManager ? "Yönetim" : "Şikâyetlerim"}
+                {isStaffOrManager ? t("nav.dashboard") : t("nav.title")}
               </Link>
 
               <Link to="/new" className={activeClass("/new")}>
-                Yeni şikâyet
+                {t("nav.newComplaint")}
               </Link>
 
               {isStaffOrManager && (
                 <>
-                  <Link
-                    to="/departments"
-                    className={activeClass("/departments")}
-                  >
-                    Birimler
-                  </Link>
-                  <Link to="/users" className={activeClass("/users")}>
-                    Kullanıcılar
-                  </Link>
-                  <Link
-                    to="/ai-settings"
-                    className={activeClass("/ai-settings")}
-                  >
-                    Yapay zekâ
-                  </Link>
+                  {canManageDepartments && (
+                    <Link
+                      to="/departments"
+                      className={activeClass("/departments")}
+                    >
+                      {t("nav.departments")}
+                    </Link>
+                  )}
+                  {canManageUsers && (
+                    <Link to="/users" className={activeClass("/users")}>
+                      {t("nav.users")}
+                    </Link>
+                  )}
+                  {canManageAiSettings && (
+                    <Link
+                      to="/ai-settings"
+                      className={activeClass("/ai-settings")}
+                    >
+                      {t("nav.aiSettings")}
+                    </Link>
+                  )}
                 </>
               )}
             </>
@@ -111,7 +186,10 @@ export default function Navbar() {
 
         {/* Right side */}
         <div className="nav-right">
-          {/* 🔘 سويتش الثيم يظهر دايمًا حتى لو ما في me (اختياري) */}
+          {/* Language switcher */}
+          <LanguageSwitcher />
+
+          {/* Theme switch */}
           <button
             type="button"
             className="btn btn-ghost nav-theme-toggle"
@@ -131,7 +209,7 @@ export default function Navbar() {
               className="btn btn-ghost nav-logout"
               onClick={handleLogout}
             >
-              Çıkış
+              {t("nav.logout")}
             </button>
           )}
         </div>

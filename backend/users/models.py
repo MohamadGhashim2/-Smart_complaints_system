@@ -1,4 +1,3 @@
-# users/models.py
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinLengthValidator, RegexValidator
@@ -16,6 +15,16 @@ class Profile(models.Model):
         ("manager", "Manager"),   # مدير النظام
         ("staff", "Staff"),       # موظف
         ("citizen", "Citizen"),   # مواطن
+    ]
+
+    # كيف يشوف الشكاوي؟
+    # all        -> كل الشكاوي (افتراضي للمدير / أغلب الموظفين)
+    # assigned   -> فقط الشكاوي التابعة لوحدات محددة
+    # unassigned -> فقط الشكاوي التي لا تحتوي على وحدة (department = NULL)
+    VIEW_SCOPE_CHOICES = [
+        ("all", "Tüm şikâyetler"),
+        ("assigned", "Sadece atanmış birimler"),
+        ("unassigned", "Sadece birimi olmayan şikâyetler"),
     ]
 
     user = models.OneToOneField(
@@ -60,6 +69,26 @@ class Profile(models.Model):
     can_manage_users = models.BooleanField(default=False)
     can_manage_ai_settings = models.BooleanField(default=False)
 
+    # أي شكاوي يمكن لهذا الموظف أن يراها؟
+    view_scope = models.CharField(
+        max_length=20,
+        choices=VIEW_SCOPE_CHOICES,
+        default="all",
+        help_text=(
+            "Personelin hangi şikâyetleri görebileceğini belirler: "
+            "'all' = tümü, 'assigned' = sadece atanmış birimler, "
+            "'unassigned' = sadece birimi olmayan şikâyetler."
+        ),
+    )
+
+    # إذا كان view_scope = "assigned" → فقط هذه الوحدات مسموحة
+    allowed_departments = models.ManyToManyField(
+        "complaints.Department",
+        blank=True,
+        related_name="staff_profiles",
+        help_text="view_scope = 'assigned' ise erişebileceği birimler.",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -96,11 +125,19 @@ class Profile(models.Model):
             # مواطن: ممنوع أي صلاحية إدارية
             for f in perm_fields:
                 setattr(self, f, False)
+            # للمواطن ما بهمنا موضوع view_scope
+            if self.view_scope != "all":
+                self.view_scope = "all"
+
         elif role == "manager":
             # مدير: كل الصلاحيات مفعلة
             for f in perm_fields:
                 setattr(self, f, True)
-        # staff: نتركها كما جاءت من الـ API
+            # المدير غالباً يشوف كل الشكاوي
+            if not self.view_scope:
+                self.view_scope = "all"
+
+        # staff: نتركها كما جاءت من الـ API (المسؤول يضبط view_scope والـ departments)
 
         # مزامنة user.is_staff مع الدور (إلا إذا كان superuser)
         if self.user_id:
@@ -125,7 +162,7 @@ class Profile(models.Model):
         verbose_name = "Profile"
         verbose_name_plural = "Profiles"
 
-
+    
 class SystemSettings(models.Model):
     """
     إعدادات النظام العامة:
@@ -135,16 +172,19 @@ class SystemSettings(models.Model):
     - السماح أو منع تسجيل المواطنين
     """
 
+
     # AI toggles
     use_ai_summary = models.BooleanField(default=True)
     use_ai_routing = models.BooleanField(default=True)
     use_duplicate_detection = models.BooleanField(default=True)
+
 
     # thresholds
     ai_min_confidence = models.FloatField(
         default=0.5,
         help_text="Minimum confidence from AI to accept department routing.",
     )
+
     similarity_threshold = models.FloatField(
         default=0.7,
         help_text="Similarity (0–1) above which a complaint is considered duplicate.",
