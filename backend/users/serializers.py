@@ -325,10 +325,5 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 }
             )
 
-        # (istersen هنا ممكن كمان تمنع is_spammer)
-        # if profile and profile.is_spammer:
-        #     raise serializers.ValidationError(
-        #         {"detail": "Hesabınız spam şüphesi nedeniyle kısıtlanmıştır."}
-        #     )
 
         return data

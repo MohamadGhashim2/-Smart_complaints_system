@@ -16,7 +16,7 @@ def _get_client():
         logger.warning("[AI-SUMMARY] OPENAI_API_KEY is NOT set. Skipping AI.")
         return None
     logger.info("[AI-SUMMARY] OpenAI client initialized with model %s", OPENAI_MODEL_SUMMARY)
-    # لو حاب تمرر المفتاح صراحة:
+
     return OpenAI(api_key=api_key)
 
 
