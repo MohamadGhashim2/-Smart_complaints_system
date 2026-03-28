@@ -1,5 +1,6 @@
 # users/serializers.py
 from django.contrib.auth.models import User
+from django.db import transaction
 from rest_framework import serializers
 
 from complaints.models import Department
@@ -153,96 +154,133 @@ class UserAdminSerializer(serializers.ModelSerializer):
                 setattr(profile, attr, bool(perms[key]))
 
     # -------- CREATE / UPDATE --------
+    def validate(self, attrs):
+        username = attrs.get("username")
+        if username:
+            qs = User.objects.filter(username=username)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {"username": "This username is already in use."}
+                )
+        return attrs
 
     def create(self, validated_data):
-        # بيانات الـ Profile من الحقول ذات source="profile.xxx"
-        profile_data = validated_data.pop("profile", {})
+        with transaction.atomic():
+            # بيانات الـ Profile من الحقول ذات source="profile.xxx"
+            profile_data = validated_data.pop("profile", {})
 
-        # كلمة السر من الـ request
-        password = validated_data.pop("password", None)
-        validated_data.pop("password2", None)  # ما نحتاجها بالباك إند
+            # كلمة السر من الـ request
+            password = validated_data.pop("password", None)
+            validated_data.pop("password2", None)  # ما نحتاجها بالباك إند
 
-        username = validated_data.get("username")
-        is_staff = validated_data.get("is_staff", False)
+            username = validated_data.get("username")
+            is_staff = validated_data.get("is_staff", False)
 
-        # إنشاء المستخدم
-        user = User(username=username, is_staff=is_staff)
-        if password:
-            user.set_password(password)
-        else:
-            user.set_password(User.objects.make_random_password())
-        user.save()
+            # إنشاء المستخدم
+            user = User(username=username, is_staff=is_staff)
+            if password:
+                user.set_password(password)
+            else:
+                user.set_password(User.objects.make_random_password())
+            user.save()
 
-        # إنشاء / إعداد الـ Profile
-        profile = Profile.objects.create(
-            user=user,
-            role=profile_data.get("role") or "citizen",
-            national_id=profile_data.get("national_id"),
-            is_blocked=profile_data.get("is_blocked", False),
-            is_spammer=profile_data.get("is_spammer", False),
-            view_scope=profile_data.get("view_scope") or "all",
-        )
+            # إنشاء / إعداد الـ Profile
+            profile = Profile.objects.create(
+                user=user,
+                role=profile_data.get("role") or "citizen",
+                national_id=profile_data.get("national_id"),
+                is_blocked=profile_data.get("is_blocked", False),
+                is_spammer=profile_data.get("is_spammer", False),
+                view_scope=profile_data.get("view_scope") or "all",
+            )
 
-        # allowed_departments جاية من allowed_department_ids
-        allowed_deps = profile_data.get("allowed_departments")
-        if allowed_deps is not None:
-            profile.allowed_departments.set(allowed_deps)
+            # allowed_departments جاية من allowed_department_ids
+            allowed_deps = profile_data.get("allowed_departments")
+            if allowed_deps is not None:
+                profile.allowed_departments.set(allowed_deps)
 
-        # صلاحيات القراءة/التحديث... إلخ
-        self._apply_permissions_from_request(profile)
-        profile.save()
+            # صلاحيات القراءة/التحديث... إلخ
+            self._apply_permissions_from_request(profile)
+            profile.save()
+            request = self.context.get("request")
+            write_audit_log(
+                actor=getattr(request, "user", None),
+                action="user_created",
+                target_type="user",
+                target_id=user.id,
+                metadata={
+                    "username": user.username,
+                    "role": profile.role,
+                    "is_staff": user.is_staff,
+                },
+            )
 
-        return user
+            return user
 
     def update(self, instance, validated_data):
-        # بيانات الـ Profile
-        profile_data = validated_data.pop("profile", {})
+        with transaction.atomic():
+            # بيانات الـ Profile
+            profile_data = validated_data.pop("profile", {})
 
-        # كلمة السر (لو تم إرسالها)
-        password = validated_data.pop("password", None)
-        validated_data.pop("password2", None)
+            # كلمة السر (لو تم إرسالها)
+            password = validated_data.pop("password", None)
+            validated_data.pop("password2", None)
 
-        if password:
-            password2 = self.initial_data.get("password2")
-            if password2 is not None and password != password2:
-                raise serializers.ValidationError(
-                    {"password2": "Şifreler eşleşmiyor."}
-                )
-            if len(password) < 6:
-                raise serializers.ValidationError(
-                    {"password": "Şifre en az 6 karakter olmalıdır."}
-                )
-            instance.set_password(password)
+            if password:
+                password2 = self.initial_data.get("password2")
+                if password2 is not None and password != password2:
+                    raise serializers.ValidationError(
+                        {"password2": "Passwords do not match."}
+                    )
+                if len(password) < 8:
+                    raise serializers.ValidationError(
+                        {"password": "Password must be at least 8 characters long."}
+                    )
+                instance.set_password(password)
 
-        # تحديث username / is_staff
-        username = validated_data.get("username")
-        if username is not None:
-            instance.username = username
+            # تحديث username / is_staff
+            username = validated_data.get("username")
+            if username is not None:
+                instance.username = username
 
-        is_staff = validated_data.get("is_staff")
-        if is_staff is not None:
-            instance.is_staff = is_staff
+            is_staff = validated_data.get("is_staff")
+            if is_staff is not None:
+                instance.is_staff = is_staff
 
-        instance.save()
+            instance.save()
 
-        # جلب / إنشاء الـ Profile
-        profile, _ = Profile.objects.get_or_create(user=instance)
+            # جلب / إنشاء الـ Profile
+            profile, _ = Profile.objects.get_or_create(user=instance)
 
-        for attr in ["role", "national_id", "is_blocked", "is_spammer", "view_scope"]:
-            if attr in profile_data:
-                setattr(profile, attr, profile_data[attr])
+            for attr in ["role", "national_id", "is_blocked", "is_spammer", "view_scope"]:
+                if attr in profile_data:
+                    setattr(profile, attr, profile_data[attr])
 
-        # allowed_departments من allowed_department_ids
-        allowed_deps = profile_data.get("allowed_departments", None)
-        if allowed_deps is not None:
-            profile.allowed_departments.set(allowed_deps)
+            # allowed_departments من allowed_department_ids
+            allowed_deps = profile_data.get("allowed_departments", None)
+            if allowed_deps is not None:
+                profile.allowed_departments.set(allowed_deps)
 
-        # صلاحيات القراءة/التحديث... إلخ
-        self._apply_permissions_from_request(profile)
-        profile.save()
+            # صلاحيات القراءة/التحديث... إلخ
+            self._apply_permissions_from_request(profile)
+            profile.save()
+            request = self.context.get("request")
+            write_audit_log(
+                actor=getattr(request, "user", None),
+                action="user_updated",
+                target_type="user",
+                target_id=instance.id,
+                metadata={
+                    "username": instance.username,
+                    "role": profile.role,
+                    "is_staff": instance.is_staff,
+                },
+            )
 
-        return instance
-
+            return instance
+        
 
 class RegisterSerializer(serializers.Serializer):
     """
@@ -257,32 +295,36 @@ class RegisterSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
+        if User.objects.filter(username=attrs["username"]).exists():
+            raise serializers.ValidationError(
+                {"username": "This username is already in use."}
+            )
         if attrs["password"] != attrs["password2"]:
             raise serializers.ValidationError(
-                {"password2": "Şifreler eşleşmiyor."}
+                {"password2": "Passwords do not match."}
             )
-        if len(attrs["password"]) < 6:
+        if len(attrs["password"]) < 8:
             raise serializers.ValidationError(
-                {"password": "Şifre en az 6 karakter olmalıdır."}
+                {"password": "Password must be at least 8 characters long."}
             )
         return attrs
-
+    
     def create(self, validated_data):
-        username = validated_data["username"]
-        password = validated_data["password"]
-        national_id = validated_data.get("national_id") or None
+        with transaction.atomic():
+            username = validated_data["username"]
+            password = validated_data["password"]
+            national_id = validated_data.get("national_id") or None
 
-        user = User.objects.create_user(username=username, password=password)
-        Profile.objects.create(
-            user=user,
-            role="citizen",
-            national_id=national_id,
-            is_blocked=False,
-            is_spammer=False,
-            view_scope="all",
-        )
-        return user
-
+            user = User.objects.create_user(username=username, password=password)
+            Profile.objects.create(
+                user=user,
+                role="citizen",
+                national_id=national_id,
+                is_blocked=False,
+                is_spammer=False,
+                view_scope="all",
+            )
+            return user
 
 class SystemSettingsSerializer(serializers.ModelSerializer):
     """
@@ -321,7 +363,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         if profile and profile.is_blocked:
             raise serializers.ValidationError(
                 {
-                    "detail": "Hesabınız engellenmiştir. Lütfen belediye ile iletişime geçin."
+                    "detail": "This account is blocked. Please contact support."
                 }
             )
 

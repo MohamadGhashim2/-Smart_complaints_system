@@ -1,11 +1,11 @@
-# users/views.py
 from django.contrib.auth.models import User
+from django.db import transaction
 from rest_framework import generics, permissions
-from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from .audit import write_audit_log
 from .models import Profile, SystemSettings
 from .serializers import (
     UserAdminSerializer,
@@ -20,7 +20,7 @@ class CanManageUsers(permissions.BasePermission):
     يسمح فقط للمستخدمين الذين لديهم can_manage_users (أو superuser)
     بالدخول إلى /api/v1/users/.
     """
-
+    
     def has_permission(self, request, view):
         user = request.user
         if not user or not user.is_authenticated:
@@ -63,6 +63,8 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     Kullanıcının engelli olup olmadığını kontrol eden serializer kullanır.
     """
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
 
 # --- Auth / Profile / Register ---
 
@@ -73,6 +75,8 @@ class RegisterView(generics.CreateAPIView):
     """
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "register"
 
     def perform_create(self, serializer):
         # اختيارياً: منع التسجيل إذا كان الإعداد مغلقاً
@@ -82,7 +86,7 @@ class RegisterView(generics.CreateAPIView):
             settings_obj = None
 
         if settings_obj and not settings_obj.allow_citizen_registration:
-            raise PermissionDenied("Yeni vatandaş kaydı şu anda kapalı.")
+            raise PermissionDenied("Citizen registration is currently disabled.")
         serializer.save()
 
 
@@ -114,6 +118,24 @@ class SystemSettingsView(generics.RetrieveUpdateAPIView):
         obj, _ = SystemSettings.objects.get_or_create(pk=1)
         return obj
 
+    def perform_update(self, serializer):
+        with transaction.atomic():
+            obj = serializer.save()
+            write_audit_log(
+                actor=self.request.user,
+                action="settings_updated",
+                target_type="system_settings",
+                target_id=obj.pk,
+                metadata={
+                    "use_ai_summary": obj.use_ai_summary,
+                    "use_ai_routing": obj.use_ai_routing,
+                    "use_duplicate_detection": obj.use_duplicate_detection,
+                    "ai_min_confidence": obj.ai_min_confidence,
+                    "similarity_threshold": obj.similarity_threshold,
+                },
+            )
+
+
 
 # --- User management (admin / manager) ---
 
@@ -125,7 +147,9 @@ class UserListCreateView(generics.ListCreateAPIView):
     """
     serializer_class = UserAdminSerializer
     permission_classes = [permissions.IsAuthenticated, CanManageUsers]
-    queryset = User.objects.all().order_by("id")
+    queryset = User.objects.select_related("profile").prefetch_related(
+        "profile__allowed_departments"
+    ).order_by("id")
 
 
 class UserDetailView(generics.RetrieveUpdateAPIView):
@@ -135,4 +159,6 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
     """
     serializer_class = UserAdminSerializer
     permission_classes = [permissions.IsAuthenticated, CanManageUsers]
-    queryset = User.objects.all().order_by("id")
+    queryset = User.objects.select_related("profile").prefetch_related(
+        "profile__allowed_departments"
+    ).order_by("id")

@@ -2,7 +2,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-from .views import HomePage
+from .views import HealthCheckView, HomePage
 from rest_framework_simplejwt.views import TokenRefreshView
 from users.views import CustomTokenObtainPairView
 
@@ -16,9 +16,10 @@ urlpatterns = [
 
     path("api/auth/token/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/v1/health/", HealthCheckView.as_view(), name="health-check"),
 
-    # شكاوي
+    # Complaints
     path("api/v1/", include("complaints.urls")),
-    # مستخدمين + إعدادات النظام
+    # Users + System settings
     path("api/v1/", include("users.urls")),
 ]

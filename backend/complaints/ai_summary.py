@@ -6,8 +6,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-OPENAI_MODEL_SUMMARY = os.getenv("OPENAI_SUMMARY_MODEL", "gpt-5-nano")
-
+OPENAI_MODEL_SUMMARY = os.getenv(
+    "OPENAI_SUMMARY_MODEL",
+    os.getenv("OPENAI_CHEAP_MODEL", "gpt-5-nano"),
+)
 
 @lru_cache(maxsize=1)
 def _get_client():

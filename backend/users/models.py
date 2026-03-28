@@ -225,3 +225,35 @@ class SystemSettings(models.Model):
     class Meta:
         verbose_name = "System Settings"
         verbose_name_plural = "System Settings"
+
+
+class AuditLog(models.Model):
+    """
+    Immutable audit trail for sensitive administrative actions.
+    """
+
+    ACTION_CHOICES = [
+        ("complaint_updated", "Complaint Updated"),
+        ("user_created", "User Created"),
+        ("user_updated", "User Updated"),
+        ("settings_updated", "Settings Updated"),
+    ]
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_actions",
+    )
+    action = models.CharField(max_length=64, choices=ACTION_CHOICES)
+    target_type = models.CharField(max_length=64)
+    target_id = models.CharField(max_length=64, blank=True, null=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    def __str__(self):
+        return f"{self.action} by {self.actor_id} on {self.target_type}:{self.target_id}"
+
+    class Meta:
+        ordering = ["-created_at"]

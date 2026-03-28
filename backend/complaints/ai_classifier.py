@@ -9,7 +9,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = os.getenv("OPENAI_CLASSIFIER_MODEL", "gpt-5-nano")
+MODEL_NAME = os.getenv(
+    "OPENAI_CLASSIFIER_MODEL",
+    os.getenv("OPENAI_CHEAP_MODEL", "gpt-5-nano"),
+)
 
 
 @lru_cache(maxsize=1)

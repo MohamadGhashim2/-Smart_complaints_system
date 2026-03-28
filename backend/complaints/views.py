@@ -1,26 +1,23 @@
 # complaints/views.py
-from django.db import models
+from django.db import transaction
 from django.utils.decorators import method_decorator
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import TemplateView
 
 from rest_framework import generics
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import OrderingFilter
+from rest_framework.throttling import ScopedRateThrottle
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAuthenticated
 
 from .permissions import IsStaffOrReadOnly
 from .models import Complaint, Department
 from .serializers import ComplaintSerializer, DepartmentSerializer
-from .ai_classifier import classify_department_id
-from .ai_summary import summarize_complaint
-from .utils import make_fingerprint, fp_similarity
-from django.utils import timezone
-from datetime import timedelta
+from .services import create_complaint_with_ai
+from users.audit import write_audit_log
 from users.models import Profile
-
-SIM_THRESHOLD = 0.7
-
 
 def get_complaints_queryset_for_user(user):
     """
@@ -29,7 +26,7 @@ def get_complaints_queryset_for_user(user):
     - profile.view_scope
     - profile.allowed_departments
     """
-    qs = Complaint.objects.all()
+    qs = Complaint.objects.select_related("user", "department", "base_complaint")
 
     if not user.is_authenticated:
         return Complaint.objects.none()
@@ -55,6 +52,7 @@ def get_complaints_queryset_for_user(user):
         if scope == "unassigned":
             # موظف خاص فقط بالشكاوي التي لم تُعيّن لوحدة
             return qs.filter(department__isnull=True)
+        
 
         if scope == "assigned":
             # موظف يرى فقط الشكاوي التابعة لوحدات محددة
@@ -94,6 +92,7 @@ class ComplaintListCreateView(generics.ListCreateAPIView):
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ["status", "department"]
     ordering_fields = ["created_at"]
+    throttle_classes = [ScopedRateThrottle]
 
     def get_queryset(self):
         user = self.request.user
@@ -102,80 +101,12 @@ class ComplaintListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
-        raw_text = serializer.validated_data.get("text", "") or ""
+        create_complaint_with_ai(serializer, user)
 
-        # بصمة للنص لتمييز الـ duplicate
-        fp = make_fingerprint(raw_text)
-
-        obj = serializer.save(
-            user=user,
-            fingerprint=fp or None,
-        )
-
-        best_existing = None
-        best_sim = 0.0
-
-        if fp:
-            recent_since = timezone.now() - timedelta(days=2)
-
-            existing_qs = (
-                Complaint.objects
-                .exclude(pk=obj.pk)
-                .exclude(fingerprint__isnull=True)
-                .exclude(fingerprint__exact="")
-                .filter(
-                    models.Q(department__isnull=False)
-                    | models.Q(summary__isnull=False)
-                    | models.Q(confidence__isnull=False),
-                    created_at__gte=recent_since,
-                )
-            )
-
-            for other in existing_qs:
-                sim = fp_similarity(fp, other.fingerprint or "")
-                if sim > best_sim:
-                    best_sim = sim
-                    best_existing = other
-
-        # معالجة الـ duplicate
-        if best_existing and best_sim >= SIM_THRESHOLD:
-            base = best_existing.base_complaint or best_existing
-
-            if base.department_id or base.summary or base.confidence is not None:
-                existing_dup_count = Complaint.objects.filter(
-                    base_complaint=base
-                ).count()
-
-                obj.base_complaint = base
-                obj.duplicate_index = existing_dup_count + 1
-                obj.used_ai = False
-                obj.department = base.department
-                obj.summary = base.summary
-                obj.confidence = base.confidence
-
-                obj.save()
-                return
-
-        # لو ما كان duplicate نطبق الـ AI
-        used_ai = False
-
-        if obj.text and not obj.summary:
-            summary = summarize_complaint(obj.text)
-            if summary:
-                obj.summary = summary
-                used_ai = True
-
-        if obj.text and obj.department_id is None:
-            dept_id, score = classify_department_id(obj.text, min_score=0.50)
-            if dept_id:
-                obj.department_id = dept_id
-                used_ai = True
-            obj.confidence = score
-
-        obj.base_complaint = None
-        obj.duplicate_index = 0
-        obj.used_ai = used_ai
-        obj.save()
+    def get_throttles(self):
+        if self.request.method == "POST":
+            self.throttle_scope = "complaint_create"
+        return super().get_throttles()
 
 
 class ComplaintDetailView(generics.RetrieveUpdateAPIView):
@@ -192,36 +123,46 @@ class ComplaintDetailView(generics.RetrieveUpdateAPIView):
         return get_complaints_queryset_for_user(user)
 
     def perform_update(self, serializer):
-        user = self.request.user
-        instance = self.get_object()
-        data = serializer.validated_data
+        with transaction.atomic():
+            user = self.request.user
+            instance = self.get_object()
+            data = serializer.validated_data
 
-        if not user.is_staff:
-            # غير الموظفين ما يعدّلوا
-            return
+            if not user.is_staff:
+                raise PermissionDenied("Only staff users can update complaints.")
 
-        old_status = instance.status
-        new_status = data.get("status", old_status)
+            old_status = instance.status
+            new_status = data.get("status", old_status)
 
-        if "text" in data:
-            instance.text = data["text"]
+            if "text" in data:
+                instance.text = data["text"]
 
-        if "status" in data:
-            instance.status = new_status
-            now = timezone.now()
+            if "status" in data:
+                instance.status = new_status
+                now = timezone.now()
 
-            if new_status == "in_review":
-                instance.in_review_at = now
-            if new_status == "closed":
-                instance.closed_at = now
+                if new_status == "in_review":
+                    instance.in_review_at = now
+                if new_status == "closed":
+                    instance.closed_at = now
 
-        if "summary" in data:
-            instance.summary = data["summary"]
+            if "summary" in data:
+                instance.summary = data["summary"]
 
-        if "department" in data:
-            instance.department = data["department"]
+            if "department" in data:
+                instance.department = data["department"]
 
-        instance.save()
+            instance.save()
+            write_audit_log(
+                actor=user,
+                action="complaint_updated",
+                target_type="complaint",
+                target_id=instance.id,
+                metadata={
+                    "status": instance.status,
+                    "department_id": instance.department_id,
+                },
+            )
 
 
 class ComplaintFormPage(TemplateView):
