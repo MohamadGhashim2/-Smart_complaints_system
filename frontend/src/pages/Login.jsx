@@ -31,7 +31,7 @@ export default function Login() {
       console.log(
         "LOGIN ERROR:",
         error?.response?.status,
-        error?.response?.data
+        error?.response?.data,
       );
       if (error?.response?.status === 401) {
         setErr(t("login.errors.invalidCreds"));
@@ -77,7 +77,9 @@ export default function Login() {
           <div className="auth-form-title">{t("login.form.title")}</div>
           <div className="auth-form-caption">{t("login.form.caption")}</div>
         </div>
-
+        <div className="alert" style={{ marginBottom: "12px" }}>
+          <strong>Demo Login:</strong> username: admin | password: admin123456
+        </div>
         {err && <div className="alert error">{err}</div>}
 
         <form className="form" onSubmit={handleLogin}>
