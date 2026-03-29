@@ -5,13 +5,16 @@ from functools import lru_cache
 
 from openai import OpenAI
 from .models import Department
+from .utils import first_nonempty_env
 import logging
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = os.getenv(
+
+MODEL_NAME = first_nonempty_env(
     "OPENAI_CLASSIFIER_MODEL",
-    os.getenv("OPENAI_CHEAP_MODEL", "gpt-5-nano"),
+    "OPENAI_CHEAP_MODEL",
+    default="gpt-5-nano",
 )
 def _resolve_openai_api_key():
     # Support both common env names to reduce deployment mistakes

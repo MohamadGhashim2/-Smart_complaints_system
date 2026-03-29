@@ -40,7 +40,7 @@ export default function NewComplaint() {
 
   const loadSettings = async () => {
     try {
-      const res = await api.get("/api/v1/system-settings/");
+      const res = await api.get("/api/v1/settings/");
       setSettings(res.data);
     } catch (e) {
       console.log("SETTINGS ERROR:", e?.response?.status, e?.response?.data);
@@ -74,7 +74,7 @@ export default function NewComplaint() {
     const payload = { text: cleanText };
 
     if (departmentId) {
-      payload.department = Number(departmentId);
+      payload.department_id = Number(departmentId);
     }
 
     try {

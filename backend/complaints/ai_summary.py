@@ -3,12 +3,15 @@ import os
 from functools import lru_cache
 from openai import OpenAI
 import logging
+from .utils import first_nonempty_env
 
 logger = logging.getLogger(__name__)
 
-OPENAI_MODEL_SUMMARY = os.getenv(
+
+OPENAI_MODEL_SUMMARY = first_nonempty_env(
     "OPENAI_SUMMARY_MODEL",
-    os.getenv("OPENAI_CHEAP_MODEL", "gpt-5-nano"),
+    "OPENAI_CHEAP_MODEL",
+    default="gpt-5-nano",
 )
 def _resolve_openai_api_key():
     return os.getenv("OPENAI_API_KEY") or os.getenv("GOPENAI_API_KEY")

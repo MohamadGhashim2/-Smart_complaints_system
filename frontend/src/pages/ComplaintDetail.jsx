@@ -277,7 +277,11 @@ export default function ComplaintDetail() {
               <div className="stat-value">
                 {c.department
                   ? `${c.department.name_tr} (${c.department.code})`
-                  : t("complaintDetail.cards.department.unassigned")}
+                  : c.status === "submitted" ||
+                      c.status === "new" ||
+                      c.status === "in_review"
+                    ? t("dashboard.department.pendingReview")
+                    : t("complaintDetail.cards.department.unassigned")}
               </div>
               <div className="stat-hint">
                 {t("complaintDetail.cards.department.hint")}

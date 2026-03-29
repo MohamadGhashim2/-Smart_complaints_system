@@ -14,7 +14,11 @@ body,
 }
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
     sans-serif;
 }
 :root {
@@ -79,12 +83,11 @@ body {
   --dt-text-main: #e5e7eb;
   --dt-text-muted: #9ca3af;
 
-
---badge-status-new-bg: rgba(129, 140, 248, 0.20);
+  --badge-status-new-bg: rgba(129, 140, 248, 0.2);
   /* Indigo soft */
   --badge-status-new-text: #e0e7ff;
 
-  --badge-status-inreview-bg: rgba(245, 158, 11, 0.20);
+  --badge-status-inreview-bg: rgba(245, 158, 11, 0.2);
   /* Amber soft */
   --badge-status-inreview-text: #fed7aa;
 
@@ -92,11 +95,11 @@ body {
   /* Success soft */
   --badge-status-closed-text: #bbf7d0;
 
-  --badge-origin-ai-bg: rgba(56, 189, 248, 0.20);
+  --badge-origin-ai-bg: rgba(56, 189, 248, 0.2);
   /* Cyan soft */
   --badge-origin-ai-text: #bae6fd;
 
-  --badge-origin-dup-bg: rgba(244, 114, 182, 0.20);
+  --badge-origin-dup-bg: rgba(244, 114, 182, 0.2);
   /* Pink soft */
   --badge-origin-dup-text: #f9a8d4;
 
@@ -163,37 +166,36 @@ body {
   --dt-text-main: #111827;
   --dt-text-muted: #6b7280;
 
-
   /* Badges – Light theme (pastel و واضحة) */
-    --badge-status-new-bg: #e0e7ff;
-    /* Indigo 100 */
-    --badge-status-new-text: #4338ca;
-    /* Indigo 700 */
-  
-    --badge-status-inreview-bg: #fef3c7;
-    /* Amber 100 */
-    --badge-status-inreview-text: #92400e;
-    /* Amber 700 */
-  
-    --badge-status-closed-bg: #dcfce7;
-    /* Green 100 */
-    --badge-status-closed-text: #15803d;
-    /* Green 700 */
-  
-    --badge-origin-ai-bg: #e0f2fe;
-    /* Sky 100 */
-    --badge-origin-ai-text: #075985;
-    /* Sky 800 */
-  
-    --badge-origin-dup-bg: #fdf2f8;
-    /* Pink 50 */
-    --badge-origin-dup-text: #9d174d;
-    /* Pink 700 */
-  
-    --badge-origin-manual-bg: #e5e7eb;
-    /* Gray 200 */
-    --badge-origin-manual-text: #111827;
-    /* Gray 900 */
+  --badge-status-new-bg: #e0e7ff;
+  /* Indigo 100 */
+  --badge-status-new-text: #4338ca;
+  /* Indigo 700 */
+
+  --badge-status-inreview-bg: #fef3c7;
+  /* Amber 100 */
+  --badge-status-inreview-text: #92400e;
+  /* Amber 700 */
+
+  --badge-status-closed-bg: #dcfce7;
+  /* Green 100 */
+  --badge-status-closed-text: #15803d;
+  /* Green 700 */
+
+  --badge-origin-ai-bg: #e0f2fe;
+  /* Sky 100 */
+  --badge-origin-ai-text: #075985;
+  /* Sky 800 */
+
+  --badge-origin-dup-bg: #fdf2f8;
+  /* Pink 50 */
+  --badge-origin-dup-text: #9d174d;
+  /* Pink 700 */
+
+  --badge-origin-manual-bg: #e5e7eb;
+  /* Gray 200 */
+  --badge-origin-manual-text: #111827;
+  /* Gray 900 */
 }
 .auth-shell {
   min-height: 100vh;
@@ -202,8 +204,17 @@ body {
   justify-content: center;
   padding: 24px;
   background:
-    radial-gradient(circle at top left, var(--bg-page-soft), var(--bg-page) 50%, var(--bg-page-deep)),
-    radial-gradient(circle at bottom right, var(--bg-page), var(--bg-page-deep) 55%);
+    radial-gradient(
+      circle at top left,
+      var(--bg-page-soft),
+      var(--bg-page) 50%,
+      var(--bg-page-deep)
+    ),
+    radial-gradient(
+      circle at bottom right,
+      var(--bg-page),
+      var(--bg-page-deep) 55%
+    );
 }
 
 .auth-card {
@@ -376,7 +387,9 @@ input[type="checkbox"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.1s ease, transform 0.05s ease,
+  transition:
+    background-color 0.1s ease,
+    transform 0.05s ease,
     box-shadow 0.1s ease;
 }
 .btn-primary {
@@ -435,15 +448,23 @@ input[type="checkbox"] {
   text-decoration: underline;
 }
 
-
 /* ========== Dashboard / İç sayfalar ========== */
 
 .page-shell {
   min-height: 100vh;
   padding: 24px 16px;
   background:
-    radial-gradient(circle at top left, var(--bg-page-soft), var(--bg-page) 50%, var(--bg-page-deep)),
-    radial-gradient(circle at bottom right, var(--bg-page), var(--bg-page-deep) 55%);
+    radial-gradient(
+      circle at top left,
+      var(--bg-page-soft),
+      var(--bg-page) 50%,
+      var(--bg-page-deep)
+    ),
+    radial-gradient(
+      circle at bottom right,
+      var(--bg-page),
+      var(--bg-page-deep) 55%
+    );
   color: var(--text-main);
 }
 .page-inner {
@@ -606,8 +627,6 @@ input[type="checkbox"] {
   color: var(--badge-origin-manual-text);
 }
 
-
-
 /* === New complaint layout === */
 
 .new-complaint-layout {
@@ -699,7 +718,6 @@ input[type="checkbox"] {
   color: var(--text-muted);
 }
 
-
 /* actions */
 
 .form-actions {
@@ -722,7 +740,6 @@ input[type="checkbox"] {
   color: var(--text-muted);
 }
 
-
 /* === Top Navbar === */
 
 .top-nav {
@@ -732,6 +749,7 @@ input[type="checkbox"] {
   backdrop-filter: blur(18px);
   background: var(--surface-elevated);
   border-bottom: 1px solid #111827;
+  overflow-x: clip;
 }
 
 .nav-inner {
@@ -750,6 +768,14 @@ input[type="checkbox"] {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+
+.nav-logo-image {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .nav-logo-circle {
@@ -840,6 +866,7 @@ input[type="checkbox"] {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .nav-username {
@@ -857,6 +884,7 @@ input[type="checkbox"] {
   .nav-inner {
     padding-inline: 12px;
     gap: 8px;
+    flex-wrap: wrap;
   }
 
   /* لو حاب بعدين تعمل منيو للموبايل بدل الإخفاء */
@@ -867,8 +895,30 @@ input[type="checkbox"] {
   .nav-title {
     font-size: 0.9rem;
   }
-}
 
+  .nav-logo-image {
+    width: 40px;
+    height: 40px;
+  }
+
+  .nav-right {
+    margin-inline-start: auto;
+    gap: 6px;
+  }
+
+  .nav-username {
+    display: none;
+  }
+
+  .nav-logout {
+    max-width: 92px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-inline: 8px;
+    font-size: 0.78rem;
+  }
+}
 
 /* === Departments page === */
 
@@ -878,7 +928,11 @@ input[type="checkbox"] {
   border-radius: 18px;
   border: 1px solid var(--border-card);
   background:
-    radial-gradient(circle at top left, rgba(var(--accent-soft-rgb), 0.07), transparent 55%),
+    radial-gradient(
+      circle at top left,
+      rgba(var(--accent-soft-rgb), 0.07),
+      transparent 55%
+    ),
     var(--surface-card);
   box-shadow: var(--shadow-card);
 }
@@ -933,7 +987,6 @@ input[type="checkbox"] {
   }
 }
 
-
 /* ==== Users Management page ==== */
 
 .users-form-card,
@@ -943,7 +996,11 @@ input[type="checkbox"] {
   border-radius: 18px;
   border: 1px solid var(--border-card);
   background:
-    radial-gradient(circle at top left, rgba(var(--accent-soft-rgb), 0.08), transparent 55%),
+    radial-gradient(
+      circle at top left,
+      rgba(var(--accent-soft-rgb), 0.08),
+      transparent 55%
+    ),
     var(--surface-card);
   box-shadow: var(--shadow-card);
 }
@@ -954,15 +1011,19 @@ input[type="checkbox"] {
   gap: 0.25rem;
 }
 
-.users-form-card .form-field>label,
-.users-edit-card .form-field>label {
+.users-form-card .form-field > label,
+.users-edit-card .form-field > label {
   font-size: 0.82rem;
   color: var(--text-muted);
   font-weight: 500;
 }
 .users-edit-card {
   background:
-    radial-gradient(circle at top right, rgba(251, 191, 36, 0.08), transparent 55%),
+    radial-gradient(
+      circle at top right,
+      rgba(251, 191, 36, 0.08),
+      transparent 55%
+    ),
     var(--surface-card);
 }
 
@@ -1009,7 +1070,6 @@ input[type="checkbox"] {
     grid-template-columns: 1fr;
   }
 }
-
 
 .settings-grid {
   display: grid;
@@ -1135,7 +1195,6 @@ input[type="checkbox"] {
   fill: var(--dt-text-main) !important;
 }
 
-
 /* === Complaint detail cards === */
 
 .complaint-card {
@@ -1149,17 +1208,21 @@ input[type="checkbox"] {
 
 .complaint-card--read {
   background:
-    radial-gradient(circle at top left,
+    radial-gradient(
+      circle at top left,
       rgba(var(--accent-soft-rgb), 0.16),
-      transparent 55%),
+      transparent 55%
+    ),
     var(--surface-elevated);
 }
 
 .complaint-card--edit {
   background:
-    radial-gradient(circle at top right,
-      rgba(var(--accent-rgb), 0.20),
-      transparent 55%),
+    radial-gradient(
+      circle at top right,
+      rgba(var(--accent-rgb), 0.2),
+      transparent 55%
+    ),
     var(--surface-elevated);
 }
 
@@ -1218,7 +1281,7 @@ input[type="checkbox"] {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
   padding: 4px 0;
   min-width: 90px;
-  z-index: 40;
+  z-index: 4000 !important  ;
 }
 
 .nav-lang-option {
@@ -1230,15 +1293,15 @@ input[type="checkbox"] {
   text-align: left;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: background 0.12s ease, transform 0.06s ease;
+  transition:
+    background 0.12s ease,
+    transform 0.06s ease;
 }
 
 .nav-lang-option:hover {
   background: rgba(148, 163, 184, 0.18);
   transform: translateY(-0.5px);
 }
-
-
 
 [data-theme="dark"] .rdt_Pagination select {
   background-color: #111827;
@@ -1251,8 +1314,6 @@ input[type="checkbox"] {
   background-color: #111827;
   color: #e5e7eb;
 }
-
-
 
 /* Floating toast notifications */
 .toast-stack {

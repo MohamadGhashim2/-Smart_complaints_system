@@ -131,11 +131,11 @@ export default function Navbar() {
           onClick={() => navigate("/dashboard")}
           style={{ cursor: "pointer" }}
         >
-          <img
+        <img
             src="src/img/logo.png"
             alt="Logo"
-            width="80"
-            height="80"
+            width="48"
+            height="48"
             className="nav-logo-image"
           />
           <div className="nav-brand">

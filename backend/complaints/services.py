@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 from datetime import timedelta
 
@@ -13,6 +14,13 @@ from .models import Complaint
 from .utils import fp_similarity, make_fingerprint
 
 logger = logging.getLogger(__name__)
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def create_complaint_with_ai(serializer, user):
@@ -33,13 +41,18 @@ def create_complaint_with_ai(serializer, user):
             status=initial_status,
         )
 
-    _start_background_ai_pipeline(complaint.id)
+    if _env_bool("COMPLAINT_AI_SYNC", False):
+        # Optional mode only; default stays async so citizen request is never blocked by AI latency.
+        _run_ai_pipeline_for_complaint(complaint.id)
+    else:
+        _start_background_ai_pipeline(complaint.id)
     return complaint
 
 
 def _initial_status_for_user(user):
+    # Citizen UX: show "new" immediately on dashboard while AI is processing in background.
     if not user or not user.is_authenticated:
-        return "submitted"
+        return "new"
 
     try:
         profile = user.profile
@@ -47,11 +60,9 @@ def _initial_status_for_user(user):
         profile = None
 
     role = (profile.role if profile and profile.role else "").lower()
-    # المواطن يحصل على حالة "submitted" مباشرة، بينما الموظف/المدير تبقى "new"
     if role == "citizen" and not user.is_staff:
-        return "submitted"
+        return "new"
     return "new"
-
 
 def _start_background_ai_pipeline(complaint_id):
     t = threading.Thread(
@@ -68,8 +79,7 @@ def _run_ai_pipeline_for_complaint(complaint_id):
     try:
         with transaction.atomic():
             complaint = (
-                Complaint.objects.select_for_update()
-                .select_related("department", "base_complaint")
+                Complaint.objects.select_for_update(of=("self",))
                 .filter(pk=complaint_id)
                 .first()
             )
@@ -114,7 +124,9 @@ def _run_ai_pipeline_for_complaint(complaint_id):
 
 
 def _finalize_status_after_background_processing(complaint):
-    if complaint.status == "submitted":
+    # Keep "submitted" only when complaint has been routed to a department.
+    # If still unrouted after background pass, leave it as "new" for manual handling.
+    if complaint.status == "submitted" and complaint.department_id is None:
         complaint.status = "new"
 
 
@@ -153,7 +165,7 @@ def _find_best_duplicate_candidate(complaint, fingerprint):
 
 def _inherit_from_duplicate_base(complaint, candidate):
     base_id = candidate.base_complaint_id or candidate.id
-    base = Complaint.objects.select_for_update().filter(pk=base_id).first()
+    base = Complaint.objects.select_for_update(of=("self",)).filter(pk=base_id).first()
     if not base:
         return None
 
@@ -168,6 +180,8 @@ def _inherit_from_duplicate_base(complaint, candidate):
     complaint.department = base.department
     complaint.summary = base.summary
     complaint.confidence = base.confidence
+    if complaint.department_id and complaint.status == "new":
+        complaint.status = "submitted"
     _finalize_status_after_background_processing(complaint)
     complaint.save(
         update_fields=[
@@ -185,6 +199,7 @@ def _inherit_from_duplicate_base(complaint, candidate):
 
 def _apply_ai_enrichment(complaint, settings_obj):
     used_ai = False
+    assigned_department = False
 
     if settings_obj.use_ai_summary and complaint.text and not complaint.summary:
         summary = summarize_complaint(complaint.text)
@@ -199,7 +214,10 @@ def _apply_ai_enrichment(complaint, settings_obj):
         )
         if department_id:
             complaint.department_id = department_id
+            assigned_department = True
             used_ai = True
         complaint.confidence = score
 
     complaint.used_ai = used_ai
+    if assigned_department and complaint.status == "new":
+        complaint.status = "submitted"

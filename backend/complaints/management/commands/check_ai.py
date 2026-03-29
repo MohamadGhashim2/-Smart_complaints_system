@@ -2,8 +2,8 @@ import os
 
 from django.core.management.base import BaseCommand
 
-from complaints.ai_classifier import classify_department_id
-from complaints.ai_summary import summarize_complaint
+from complaints.ai_classifier import MODEL_NAME, classify_department_id
+from complaints.ai_summary import OPENAI_MODEL_SUMMARY, summarize_complaint
 from complaints.models import Department
 from users.models import SystemSettings
 
@@ -39,11 +39,18 @@ class Command(BaseCommand):
         self.stdout.write(f"OPENAI_API_KEY set: {key_openai}")
         self.stdout.write(f"GOPENAI_API_KEY set: {key_gopenai}")
         self.stdout.write(f"Any API key set: {any_key}")
+        self.stdout.write(f"Summary model: {OPENAI_MODEL_SUMMARY!r}")
+        self.stdout.write(f"Classifier model: {MODEL_NAME!r}")
         self.stdout.write(f"Departments count: {deps_count}")
         self.stdout.write(f"use_ai_summary: {settings_obj.use_ai_summary}")
         self.stdout.write(f"use_ai_routing: {settings_obj.use_ai_routing}")
         self.stdout.write(f"ai_min_confidence: {settings_obj.ai_min_confidence}")
-
+        if not OPENAI_MODEL_SUMMARY or not MODEL_NAME:
+            self.stdout.write(
+                self.style.WARNING(
+                    "Model name is empty. Set OPENAI_CHEAP_MODEL or specific OPENAI_*_MODEL values."
+                )
+            )
         if skip_live:
             self.stdout.write(self.style.WARNING("Skipped live OpenAI call (--skip-live-call)."))
             return

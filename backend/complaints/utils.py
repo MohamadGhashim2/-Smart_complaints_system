@@ -1,7 +1,15 @@
 # complaints/utils.py
 import re
 import unicodedata
+import os
 
+
+def first_nonempty_env(*names: str, default: str = "") -> str:
+    for name in names:
+        value = (os.getenv(name) or "").strip()
+        if value:
+            return value
+    return default
 def make_fingerprint(text: str) -> str:
     
     if not text:

@@ -1,7 +1,22 @@
 // src/i18n.js
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+const SUPPORTED_LANGS = ["tr", "ar", "en"];
+const LANG_STORAGE_KEY = "app_lang";
 
+function getInitialLanguage() {
+  if (typeof window === "undefined") return "tr";
+  const saved = window.localStorage.getItem(LANG_STORAGE_KEY);
+  if (saved && SUPPORTED_LANGS.includes(saved)) return saved;
+  return "tr";
+}
+
+function applyDocumentLanguage(lng) {
+  if (typeof document === "undefined") return;
+  const safeLang = SUPPORTED_LANGS.includes(lng) ? lng : "tr";
+  document.documentElement.lang = safeLang;
+  document.documentElement.dir = safeLang === "ar" ? "rtl" : "ltr";
+}
 const resources = {
   tr: {
     translation: {
@@ -445,6 +460,9 @@ const resources = {
           duplicate: "Mükerrer #{{index}}",
           ai: "Yapay zekâ",
           manual: "Manuel",
+        },
+        department: {
+          pendingReview: "İnceleniyor",
         },
         stats: {
           total: {
@@ -984,6 +1002,9 @@ const resources = {
           duplicate: "مكرّرة #{{index}}",
           ai: "ذكاء اصطناعي",
           manual: "يدوي",
+        },
+        department: {
+          pendingReview: "يتم المراجعة",
         },
         stats: {
           total: {
@@ -1528,6 +1549,9 @@ const resources = {
           ai: "AI",
           manual: "Manual",
         },
+        department: {
+          pendingReview: "Under review",
+        },
         stats: {
           total: {
             staffLabel: "Total complaints",
@@ -1635,11 +1659,20 @@ const resources = {
 
 i18n.use(initReactI18next).init({
   resources,
-  lng: "tr",
+  lng: getInitialLanguage(),
   fallbackLng: "en",
   interpolation: {
     escapeValue: false,
   },
 });
+
+i18n.on("languageChanged", (lng) => {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(LANG_STORAGE_KEY, lng);
+  }
+  applyDocumentLanguage(lng);
+});
+
+applyDocumentLanguage(i18n.language);
 
 export default i18n;

@@ -59,7 +59,8 @@ export default function Dashboard() {
   useEffect(() => {
     loadMe();
     loadComplaints();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const intervalId = setInterval(loadComplaints, 10000);
+    return () => clearInterval(intervalId);
   }, []);
 
   const logout = () => {
@@ -109,7 +110,19 @@ export default function Dashboard() {
     if (status === "closed") return "badge badge-status-closed";
     return "badge";
   };
-
+  const departmentLabel = (row) => {
+    if (row.department) {
+      return `${row.department.name_tr} (${row.department.code})`;
+    }
+    if (
+      row.status === "submitted" ||
+      row.status === "new" ||
+      row.status === "in_review"
+    ) {
+      return t("dashboard.department.pendingReview");
+    }
+    return "—";
+  };
   const originLabel = (c) => {
     const dupIndex = c.duplicate_index ?? 0;
     if (dupIndex > 0)
@@ -204,10 +217,7 @@ export default function Dashboard() {
     },
     {
       name: t("dashboard.table.columns.department"),
-      selector: (row) =>
-        row.department
-          ? `${row.department.name_tr} (${row.department.code})`
-          : "—",
+      selector: (row) => departmentLabel(row),
       sortable: true,
       grow: 1.3,
       wrap: true,
@@ -284,10 +294,7 @@ export default function Dashboard() {
     },
     {
       name: t("dashboard.table.columns.department"),
-      selector: (row) =>
-        row.department
-          ? `${row.department.name_tr} (${row.department.code})`
-          : "—",
+      selector: (row) => departmentLabel(row),
       sortable: true,
       grow: 1.3,
       wrap: true,

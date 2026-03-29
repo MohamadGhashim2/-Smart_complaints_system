@@ -58,24 +58,3 @@ class ComplaintSerializer(serializers.ModelSerializer):
             "duplicate_index",
             "department",
         ]
-
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        request = self.context.get("request")
-        user = getattr(request, "user", None)
-
-        # الموظف/المدير يرى submitted كـ new (واجهة تشغيل داخلية)
-        if data.get("status") == "submitted" and user and user.is_authenticated:
-            is_staff_like = bool(getattr(user, "is_staff", False))
-            if not is_staff_like:
-                try:
-                    role = (user.profile.role or "").lower()
-                    is_staff_like = role in {"staff", "manager"}
-                except Exception:
-                    is_staff_like = False
-
-            if is_staff_like:
-                data["status"] = "new"
-
-        return data
