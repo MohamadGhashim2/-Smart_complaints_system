@@ -10,12 +10,15 @@ OPENAI_MODEL_SUMMARY = os.getenv(
     "OPENAI_SUMMARY_MODEL",
     os.getenv("OPENAI_CHEAP_MODEL", "gpt-5-nano"),
 )
-
+def _resolve_openai_api_key():
+    return os.getenv("OPENAI_API_KEY") or os.getenv("GOPENAI_API_KEY")
 @lru_cache(maxsize=1)
 def _get_client():
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = _resolve_openai_api_key()
     if not api_key:
-        logger.warning("[AI-SUMMARY] OPENAI_API_KEY is NOT set. Skipping AI.")
+        logger.warning(
+            "[AI-SUMMARY] OPENAI_API_KEY/GOPENAI_API_KEY is NOT set. Skipping AI."
+        )
         return None
     logger.info("[AI-SUMMARY] OpenAI client initialized with model %s", OPENAI_MODEL_SUMMARY)
 

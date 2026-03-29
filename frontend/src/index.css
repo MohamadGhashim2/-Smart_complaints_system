@@ -1251,3 +1251,45 @@ input[type="checkbox"] {
   background-color: #111827;
   color: #e5e7eb;
 }
+
+
+
+/* Floating toast notifications */
+.toast-stack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+  max-width: min(420px, calc(100vw - 24px));
+}
+
+.toast-item {
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-card);
+  color: var(--text-main);
+  background: var(--surface-elevated);
+}
+
+.toast-success {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+
+.toast-error {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.toast-info {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.14);
+}

@@ -5,12 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { clearTokens } from "../auth";
 import DataTableModule from "react-data-table-component";
 import { useTranslation } from "react-i18next";
+import { useToast } from "../components/ToastProvider";
 
 const DataTable = DataTableModule.default || DataTableModule;
 
 export default function UsersManagement() {
   const { t } = useTranslation();
-
+  const toast = useToast();
   const [me, setMe] = useState(null);
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -50,7 +51,15 @@ export default function UsersManagement() {
   const [filterBlocked, setFilterBlocked] = useState("all");
 
   const navigate = useNavigate();
+  const showError = (message) => {
+    setErr(message);
+    toast.error(message);
+  };
 
+  const showSuccess = (message) => {
+    setOk(message);
+    toast.success(message);
+  };
   // ===== Helpers =====
   const canManageUsers = (u) => u?.is_superuser || u?.profile?.can_manage_users;
 
@@ -67,7 +76,7 @@ export default function UsersManagement() {
   const roleLabel = (u) =>
     roleLabelFromString(
       u?.role || u?.profile?.role,
-      u?.is_staff ?? u?.profile?.is_staff
+      u?.is_staff ?? u?.profile?.is_staff,
     );
 
   const loadMe = async () => {
@@ -82,7 +91,7 @@ export default function UsersManagement() {
         clearTokens();
         navigate("/");
       } else {
-        setErr(t("usersManagement.errors.meLoad"));
+        showError(t("usersManagement.errors.meLoad"));
       }
       setLoading(false);
       return null;
@@ -90,8 +99,8 @@ export default function UsersManagement() {
   };
 
   const loadUsers = async () => {
-    setErr("");
-    setOk("");
+    showError("");
+    showSuccess("");
     setLoading(true);
     try {
       const res = await api.get("/api/v1/users/");
@@ -103,10 +112,10 @@ export default function UsersManagement() {
       if (status === 401 || status === 403) {
         clearTokens();
         navigate("/");
-        setErr(t("usersManagement.errors.noAccess"));
+        showError(t("usersManagement.errors.noAccess"));
         return;
       } else {
-        setErr(t("usersManagement.errors.usersLoad"));
+        showError(t("usersManagement.errors.usersLoad"));
       }
     } finally {
       setLoading(false);
@@ -133,7 +142,7 @@ export default function UsersManagement() {
         setLoading(false);
         clearTokens();
         navigate("/");
-        alert(t("usersManagement.errors.noAccess"));
+        toast.error(t("usersManagement.errors.noAccess"));
         return;
       }
 
@@ -182,25 +191,25 @@ export default function UsersManagement() {
 
   const submitCreate = async (e) => {
     e.preventDefault();
-    setErr("");
-    setOk("");
+    showError("");
+    showSuccess("");
 
     if (
       !createForm.username.trim() ||
       !createForm.password ||
       !createForm.password2
     ) {
-      setErr(t("usersManagement.errors.create.fillUsernameAndPassword"));
+      showError(t("usersManagement.errors.create.fillUsernameAndPassword"));
       return;
     }
 
     if (createForm.password !== createForm.password2) {
-      setErr(t("usersManagement.errors.passwordsDontMatch"));
+      showError(t("usersManagement.errors.passwordsDontMatch"));
       return;
     }
 
     if (createForm.password.length < 6) {
-      setErr(t("usersManagement.errors.passwordTooShort"));
+      showError(t("usersManagement.errors.passwordTooShort"));
       return;
     }
 
@@ -209,7 +218,7 @@ export default function UsersManagement() {
       (createForm.national_id.length !== 11 ||
         !/^\d{11}$/.test(createForm.national_id))
     ) {
-      setErr(t("usersManagement.errors.nationalIdCitizen11Digits"));
+      showError(t("usersManagement.errors.nationalIdCitizen11Digits"));
       return;
     }
 
@@ -232,7 +241,7 @@ export default function UsersManagement() {
       },
       // الحقول الجديدة
       view_scope: isCitizen ? "all" : createForm.view_scope,
-      allowed_departments:
+      allowed_department_ids:
         !isCitizen && createForm.view_scope === "assigned"
           ? createForm.allowed_departments.map((id) => Number(id))
           : [],
@@ -241,7 +250,7 @@ export default function UsersManagement() {
     try {
       setCreating(true);
       await api.post("/api/v1/users/", payload);
-      setOk(t("usersManagement.success.userCreated"));
+      showSuccess(t("usersManagement.success.userCreated"));
       setCreateForm({
         username: "",
         password: "",
@@ -263,16 +272,16 @@ export default function UsersManagement() {
       console.log(
         "USER CREATE ERROR:",
         e2?.response?.status,
-        e2?.response?.data
+        e2?.response?.data,
       );
       if (e2?.response?.data) {
         const d = e2.response.data;
-        if (typeof d === "string") setErr(d);
-        else if (d.username) setErr(String(d.username));
-        else if (d.national_id) setErr(String(d.national_id));
-        else setErr(t("usersManagement.errors.userCreateFail"));
+        if (typeof d === "string") showError(d);
+        else if (d.username) showError(String(d.username));
+        else if (d.national_id) showError(String(d.national_id));
+        else showError(t("usersManagement.errors.userCreateFail"));
       } else {
-        setErr(t("usersManagement.errors.userCreateFail"));
+        showError(t("usersManagement.errors.userCreateFail"));
       }
     } finally {
       setCreating(false);
@@ -363,21 +372,21 @@ export default function UsersManagement() {
     e.preventDefault();
     if (!editing || !editForm) return;
 
-    setErr("");
-    setOk("");
+    showError("");
+    showSuccess("");
 
     // فاليديشن كلمة السر الجديدة (اختيارية)
     if (editForm.password || editForm.password2) {
       if (!editForm.password || !editForm.password2) {
-        setErr(t("usersManagement.errors.newPasswordFillBoth"));
+        showError(t("usersManagement.errors.newPasswordFillBoth"));
         return;
       }
       if (editForm.password !== editForm.password2) {
-        setErr(t("usersManagement.errors.newPasswordsDontMatch"));
+        showError(t("usersManagement.errors.newPasswordsDontMatch"));
         return;
       }
       if (editForm.password.length < 6) {
-        setErr(t("usersManagement.errors.newPasswordTooShort"));
+        showError(t("usersManagement.errors.newPasswordTooShort"));
         return;
       }
     }
@@ -387,7 +396,7 @@ export default function UsersManagement() {
       (editForm.national_id.length !== 11 ||
         !/^\d{11}$/.test(editForm.national_id))
     ) {
-      setErr(t("usersManagement.errors.nationalId11IfPresent"));
+      showError(t("usersManagement.errors.nationalId11IfPresent"));
       return;
     }
 
@@ -409,7 +418,7 @@ export default function UsersManagement() {
         manage_ai_settings: editForm.can_manage_ai_settings,
       },
       view_scope: isCitizen ? "all" : editForm.view_scope,
-      allowed_departments:
+      allowed_department_ids:
         !isCitizen && editForm.view_scope === "assigned"
           ? editForm.allowed_departments.map((id) => Number(id))
           : [],
@@ -423,7 +432,7 @@ export default function UsersManagement() {
 
     try {
       await api.patch(`/api/v1/users/${editing.id}/`, payload);
-      setOk(t("usersManagement.success.userUpdated"));
+      showSuccess(t("usersManagement.success.userUpdated"));
       setEditing(null);
       setEditForm(null);
       await loadUsers();
@@ -431,17 +440,17 @@ export default function UsersManagement() {
       console.log(
         "USER UPDATE ERROR:",
         e2?.response?.status,
-        e2?.response?.data
+        e2?.response?.data,
       );
       if (e2?.response?.data) {
         const d = e2.response.data;
-        if (typeof d === "string") setErr(d);
-        else if (d.username) setErr(String(d.username));
+        if (typeof d === "string") showError(d);
+        else if (d.username) showError(String(d.username));
         else if (d.profile && d.profile.national_id)
-          setErr(String(d.profile.national_id));
-        else setErr(t("usersManagement.errors.userUpdateFail"));
+          showError(String(d.profile.national_id));
+        else showError(t("usersManagement.errors.userUpdateFail"));
       } else {
-        setErr(t("usersManagement.errors.userUpdateFail"));
+        showError(t("usersManagement.errors.userUpdateFail"));
       }
     }
   };
@@ -537,7 +546,7 @@ export default function UsersManagement() {
       selector: (row) =>
         roleLabelFromString(
           row.role || row.profile?.role,
-          row.is_staff ?? row.profile?.is_staff
+          row.is_staff ?? row.profile?.is_staff,
         ),
       sortable: true,
       width: "130px",
@@ -697,7 +706,7 @@ export default function UsersManagement() {
                   updateCreateField("role", role);
                   updateCreateField(
                     "is_staff",
-                    role === "citizen" ? false : true
+                    role === "citizen" ? false : true,
                   );
                 }}
               >
@@ -740,7 +749,7 @@ export default function UsersManagement() {
               <input
                 className="input"
                 placeholder={t(
-                  "usersManagement.placeholders.nationalIdCitizenOnly"
+                  "usersManagement.placeholders.nationalIdCitizenOnly",
                 )}
                 value={createForm.national_id}
                 maxLength={11}
@@ -821,7 +830,7 @@ export default function UsersManagement() {
                           <input
                             type="checkbox"
                             checked={createForm.allowed_departments.includes(
-                              d.id
+                              d.id,
                             )}
                             onChange={() => toggleCreateDepartment(d.id)}
                           />{" "}
@@ -1040,7 +1049,7 @@ export default function UsersManagement() {
                   value={editForm.password}
                   onChange={(e) => updateEditField("password", e.target.value)}
                   placeholder={t(
-                    "usersManagement.placeholders.newPasswordOptional"
+                    "usersManagement.placeholders.newPasswordOptional",
                   )}
                 />
               </div>
@@ -1053,7 +1062,7 @@ export default function UsersManagement() {
                   value={editForm.password2}
                   onChange={(e) => updateEditField("password2", e.target.value)}
                   placeholder={t(
-                    "usersManagement.placeholders.newPasswordAgain"
+                    "usersManagement.placeholders.newPasswordAgain",
                   )}
                 />
               </div>
@@ -1068,7 +1077,7 @@ export default function UsersManagement() {
                     updateEditField("national_id", e.target.value)
                   }
                   placeholder={t(
-                    "usersManagement.placeholders.nationalIdOptional"
+                    "usersManagement.placeholders.nationalIdOptional",
                   )}
                 />
               </div>
@@ -1168,7 +1177,7 @@ export default function UsersManagement() {
                             <input
                               type="checkbox"
                               checked={editForm.allowed_departments.includes(
-                                d.id
+                                d.id,
                               )}
                               onChange={() => toggleEditDepartment(d.id)}
                             />{" "}

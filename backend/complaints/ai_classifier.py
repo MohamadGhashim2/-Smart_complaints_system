@@ -13,13 +13,18 @@ MODEL_NAME = os.getenv(
     "OPENAI_CLASSIFIER_MODEL",
     os.getenv("OPENAI_CHEAP_MODEL", "gpt-5-nano"),
 )
+def _resolve_openai_api_key():
+    # Support both common env names to reduce deployment mistakes
+    return os.getenv("OPENAI_API_KEY") or os.getenv("GOPENAI_API_KEY")
 
 
 @lru_cache(maxsize=1)
 def _get_client() -> OpenAI | None:
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = _resolve_openai_api_key()
     if not api_key:
-        logger.warning("[AI-CLS] OPENAI_API_KEY is NOT set. Skipping AI.")
+        logger.warning(
+            "[AI-CLS] OPENAI_API_KEY/GOPENAI_API_KEY is NOT set. Skipping AI."
+        )
         return None
     logger.info("[AI-CLS] OpenAI client initialized with model %s", MODEL_NAME)
     return OpenAI(api_key=api_key)

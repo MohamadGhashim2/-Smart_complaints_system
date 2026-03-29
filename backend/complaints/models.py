@@ -12,6 +12,7 @@ class Department(models.Model):
 
 class Complaint(models.Model):
     STATUS_CHOICES = [
+        ("submitted", "Gönderildi (İşleniyor)"),
         ("new", "Yeni"),
         ("in_review", "İncelemede"),
         ("closed", "Kapandı"),

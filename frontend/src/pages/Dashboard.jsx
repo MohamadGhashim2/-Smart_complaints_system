@@ -95,6 +95,7 @@ export default function Dashboard() {
 
   // ====== Helpers ======
   const statusLabel = (status) => {
+    if (status === "submitted") return t("dashboard.status.submitted");
     if (status === "new") return t("dashboard.status.new");
     if (status === "in_review") return t("dashboard.status.in_review");
     if (status === "closed") return t("dashboard.status.closed");
@@ -102,6 +103,7 @@ export default function Dashboard() {
   };
 
   const statusClass = (status) => {
+    if (status === "submitted") return "badge badge-origin-manual";
     if (status === "new") return "badge badge-status-new";
     if (status === "in_review") return "badge badge-status-inreview";
     if (status === "closed") return "badge badge-status-closed";
@@ -138,11 +140,14 @@ export default function Dashboard() {
   // basit istatistikler
   const total = complaints.length;
   const waiting = complaints.filter(
-    (c) => c.status === "new" || c.status === "in_review"
+    (c) =>
+      c.status === "submitted" ||
+      c.status === "new" ||
+      c.status === "in_review",
   ).length;
   const aiCount = complaints.filter((c) => c.used_ai).length;
   const dupCount = complaints.filter(
-    (c) => (c.duplicate_index ?? 0) > 0
+    (c) => (c.duplicate_index ?? 0) > 0,
   ).length;
 
   // ====== FILTERS (client-side) ======

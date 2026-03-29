@@ -49,3 +49,5 @@ python -m pip install dj-database-url
 ```
 
 Önerilen Python sürümü: **3.11** (3.14 ile bazı paketlerde uyumsuzluk çıkabilir).
+
+> Note: For local development, set `DJANGO_DEBUG=true` in your `.env` to disable production HTTPS redirects on `runserver`.

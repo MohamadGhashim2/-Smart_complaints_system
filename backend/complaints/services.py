@@ -1,59 +1,121 @@
+import logging
+import threading
 from datetime import timedelta
 
-from django.db import models, transaction
+from django.db import close_old_connections, models, transaction
 from django.utils import timezone
 
-from users.models import SystemSettings
+from users.models import Profile, SystemSettings
 
 from .ai_classifier import classify_department_id
 from .ai_summary import summarize_complaint
 from .models import Complaint
 from .utils import fp_similarity, make_fingerprint
 
+logger = logging.getLogger(__name__)
+
 
 def create_complaint_with_ai(serializer, user):
     """
-    Enterprise complaint creation flow:
-    - ACID-safe transaction.
-    - duplicate detection from recent complaints.
-    - AI summarization / routing controlled by SystemSettings.
+    Fast complaint creation:
+    1) Save complaint immediately.
+    2) Return response quickly.
+    3) Process AI in background.
     """
     with transaction.atomic():
-        settings_obj = SystemSettings.get_solo()
-
         raw_text = serializer.validated_data.get("text", "") or ""
         fingerprint = make_fingerprint(raw_text)
 
+        initial_status = _initial_status_for_user(user)
         complaint = serializer.save(
             user=user,
             fingerprint=fingerprint or None,
+            status=initial_status,
         )
 
-        duplicate_threshold = settings_obj.similarity_threshold
-        best_existing = _find_best_duplicate_candidate(
-            complaint=complaint,
-            fingerprint=fingerprint,
-        )
+    _start_background_ai_pipeline(complaint.id)
+    return complaint
 
-        if best_existing and best_existing["similarity"] >= duplicate_threshold:
-            base = _inherit_from_duplicate_base(complaint, best_existing["complaint"])
-            if base:
-                return complaint
 
-        _apply_ai_enrichment(complaint, settings_obj)
-        complaint.base_complaint = None
-        complaint.duplicate_index = 0
-        complaint.save(
-            update_fields=[
-                "summary",
-                "department",
-                "confidence",
-                "used_ai",
-                "base_complaint",
-                "duplicate_index",
-            ]
-        )
-        return complaint
+def _initial_status_for_user(user):
+    if not user or not user.is_authenticated:
+        return "submitted"
+
+    try:
+        profile = user.profile
+    except Profile.DoesNotExist:
+        profile = None
+
+    role = (profile.role if profile and profile.role else "").lower()
+    # المواطن يحصل على حالة "submitted" مباشرة، بينما الموظف/المدير تبقى "new"
+    if role == "citizen" and not user.is_staff:
+        return "submitted"
+    return "new"
+
+
+def _start_background_ai_pipeline(complaint_id):
+    t = threading.Thread(
+        target=_run_ai_pipeline_for_complaint,
+        args=(complaint_id,),
+        daemon=True,
+        name=f"complaint-ai-{complaint_id}",
+    )
+    t.start()
+
+
+def _run_ai_pipeline_for_complaint(complaint_id):
+    close_old_connections()
+    try:
+        with transaction.atomic():
+            complaint = (
+                Complaint.objects.select_for_update()
+                .select_related("department", "base_complaint")
+                .filter(pk=complaint_id)
+                .first()
+            )
+            if not complaint:
+                return
+
+            settings_obj = SystemSettings.get_solo()
+            duplicate_threshold = settings_obj.similarity_threshold
+
+            best_existing = _find_best_duplicate_candidate(
+                complaint=complaint,
+                fingerprint=complaint.fingerprint or "",
+            )
+
+            if best_existing and best_existing["similarity"] >= duplicate_threshold:
+                base = _inherit_from_duplicate_base(complaint, best_existing["complaint"])
+                if base:
+                    _finalize_status_after_background_processing(complaint)
+                    return
+
+            _apply_ai_enrichment(complaint, settings_obj)
+            complaint.base_complaint = None
+            complaint.duplicate_index = 0
+            _finalize_status_after_background_processing(complaint)
+            complaint.save(
+                update_fields=[
+                    "summary",
+                    "department",
+                    "confidence",
+                    "used_ai",
+                    "base_complaint",
+                    "duplicate_index",
+                    "status",
+                ]
+            )
+    except Exception as exc:
+        logger.exception("[Complaint AI] Background processing failed for #%s: %s", complaint_id, exc)
+        # لا نتركها معلّقة للأبد بحالة submitted
+        Complaint.objects.filter(pk=complaint_id, status="submitted").update(status="new")
+    finally:
+        close_old_connections()
+
+
+def _finalize_status_after_background_processing(complaint):
+    if complaint.status == "submitted":
+        complaint.status = "new"
 
 
 def _find_best_duplicate_candidate(complaint, fingerprint):
@@ -80,6 +142,7 @@ def _find_best_duplicate_candidate(complaint, fingerprint):
         similarity = fp_similarity(fingerprint, other.fingerprint or "")
         if similarity > best_similarity:
             best_similarity = similarity
+
             best_existing = other
 
     if not best_existing:
@@ -105,6 +168,7 @@ def _inherit_from_duplicate_base(complaint, candidate):
     complaint.department = base.department
     complaint.summary = base.summary
     complaint.confidence = base.confidence
+    _finalize_status_after_background_processing(complaint)
     complaint.save(
         update_fields=[
             "base_complaint",
@@ -113,6 +177,7 @@ def _inherit_from_duplicate_base(complaint, candidate):
             "department",
             "summary",
             "confidence",
+            "status",
         ]
     )
     return base

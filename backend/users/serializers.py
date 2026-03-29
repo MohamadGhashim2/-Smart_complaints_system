@@ -7,7 +7,7 @@ from complaints.models import Department
 from complaints.serializers import DepartmentSerializer
 from .models import Profile, SystemSettings
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
+from .audit import write_audit_log
 
 class UserAdminSerializer(serializers.ModelSerializer):
     """

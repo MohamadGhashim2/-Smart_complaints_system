@@ -32,7 +32,6 @@ const resources = {
         creating: "Oluşturuluyor...",
       },
 
-
       // ===== Users Management =====
       usersManagement: {
         title: "Kullanıcı Yönetimi",
@@ -177,39 +176,32 @@ const resources = {
         sections: {
           aiFeatures: {
             title: "Yapay zekâ özellikleri",
-            help:
-              "Şikâyet metinlerine göre özet çıkarma ve otomatik birim yönlendirmeyi isteğe göre açıp kapatabilirsiniz.",
+            help: "Şikâyet metinlerine göre özet çıkarma ve otomatik birim yönlendirmeyi isteğe göre açıp kapatabilirsiniz.",
           },
           thresholds: {
             title: "Eşik değerleri",
-            help:
-              "Yapay zekânın kararı ne kadar güçlü olduğunda dikkate alınacağını belirleyin.",
+            help: "Yapay zekânın kararı ne kadar güçlü olduğunda dikkate alınacağını belirleyin.",
           },
           spamRules: {
             title: "Spam kuralları",
-            help:
-              "Aynı kullanıcının kısa sürede çok sayıda şikâyet göndermesini sınırlandırın.",
+            help: "Aynı kullanıcının kısa sürede çok sayıda şikâyet göndermesini sınırlandırın.",
           },
           citizenAccounts: {
             title: "Vatandaş hesapları",
-            help:
-              "Vatandaşların kendilerinin kayıt oluşturup oluşturamayacağını belirleyin.",
+            help: "Vatandaşların kendilerinin kayıt oluşturup oluşturamayacağını belirleyin.",
           },
         },
         fields: {
           use_ai_summary: "AI özetleme özelliğini kullan",
-          use_ai_routing:
-            "Şikâyetleri otomatik olarak ilgili birime yönlendir",
+          use_ai_routing: "Şikâyetleri otomatik olarak ilgili birime yönlendir",
           use_duplicate_detection: "Benzer şikâyetleri (duplicate) tespit et",
           ai_min_confidence: {
             label: "AI güven eşiği (0–1)",
-            hint:
-              "Örn. 0.6 → güven %60 altında ise AI birim önerisi kullanılmasın.",
+            hint: "Örn. 0.6 → güven %60 altında ise AI birim önerisi kullanılmasın.",
           },
           similarity_threshold: {
             label: "Duplicate benzerlik eşiği (0–1)",
-            hint:
-              "Örn. 0.8 → benzerlik %80 üzerindeyse mükerrer kabul edilir.",
+            hint: "Örn. 0.8 → benzerlik %80 üzerindeyse mükerrer kabul edilir.",
           },
           spam_max_per_day: {
             label: "Günlük maksimum şikâyet",
@@ -226,8 +218,6 @@ const resources = {
           save: "Ayarları kaydet",
           saving: "Kaydediliyor...",
         },
-
-
       },
       register: {
         heroKicker: "Akıllı Belediye",
@@ -275,6 +265,7 @@ const resources = {
       },
       complaints: {
         status: {
+          submitted: "Gönderildi",
           new: "Yeni",
           inReview: "İncelemede",
           closed: "Kapandı",
@@ -286,16 +277,14 @@ const resources = {
         roleLabel: "Rol:",
         form: {
           title: "Şikâyet formu",
-          help:
-            "Lütfen problemi mümkün olduğunca açık bir şekilde Türkçe veya Arapça olarak yazınız.",
+          help: "Lütfen problemi mümkün olduğunca açık bir şekilde Türkçe veya Arapça olarak yazınız.",
         },
         fields: {
           text: "Şikâyet metni",
           department: "Birim seçimi",
         },
         placeholders: {
-          text:
-            "Örnek: Mahallemizdeki sokak lambaları çalışmıyor, akşamları çok karanlık oluyor...",
+          text: "Örnek: Mahallemizdeki sokak lambaları çalışmıyor, akşamları çok karanlık oluyor...",
         },
         hints: {
           noAbuse:
@@ -350,8 +339,7 @@ const resources = {
         },
         form: {
           title: "Giriş yap",
-          caption:
-            "Yönetici, personel veya vatandaş hesabınızla giriş yapın.",
+          caption: "Yönetici, personel veya vatandaş hesabınızla giriş yapın.",
         },
         fields: {
           username: "Kullanıcı adı",
@@ -448,6 +436,7 @@ const resources = {
           loadFailed: "Şikâyetler yüklenemedi.",
         },
         status: {
+          submitted: "Gönderildi",
           new: "Yeni",
           in_review: "İncelemede",
           closed: "Kapandı",
@@ -466,8 +455,7 @@ const resources = {
           },
           waiting: {
             label: "Bekleyen şikâyet",
-            hint:
-              'Durumu "Yeni" veya "İncelemede" olan şikâyetler.',
+            hint: 'Durumu "Yeni" veya "İncelemede" olan şikâyetler.',
           },
           aiUsed: {
             label: "Yapay zekâ kullanılan",
@@ -479,8 +467,7 @@ const resources = {
           },
         },
         table: {
-          searchPlaceholder:
-            "Metne, vatandaşa veya birime göre ara...",
+          searchPlaceholder: "Metne, vatandaşa veya birime göre ara...",
           noData: "Gösterilecek şikâyet bulunamadı.",
           columns: {
             id: "ID",
@@ -532,8 +519,7 @@ const resources = {
           },
           confidence: {
             label: "Model güveni",
-            hint:
-              "Yapay zekâ modelinin ilgili birime yönlendirme güven oranı.",
+            hint: "Yapay zekâ modelinin ilgili birime yönlendirme güven oranı.",
           },
         },
         readOnly: {
@@ -560,7 +546,6 @@ const resources = {
           updateError: "Güncelleme başarısız. Lütfen tekrar deneyin.",
         },
       },
-
     },
   },
 
@@ -593,11 +578,9 @@ const resources = {
         creating: "جارٍ الإنشاء...",
       },
 
-
       usersManagement: {
         title: "إدارة المستخدمين",
-        subtitle:
-          "تحكم بحسابات الموظفين والمديرين وصلاحياتهم من هذه الصفحة.",
+        subtitle: "تحكم بحسابات الموظفين والمديرين وصلاحياتهم من هذه الصفحة.",
         loggedInAs: "المستخدم الحالي:",
         roleLabel: "الدور:",
 
@@ -704,13 +687,10 @@ const resources = {
           nationalIdCitizen11Digits:
             "يجب أن يتكون الرقم الوطني من 11 خانة للمواطن.",
           create: {
-            fillUsernameAndPassword:
-              "يرجى تعبئة اسم المستخدم وكلمة المرور.",
+            fillUsernameAndPassword: "يرجى تعبئة اسم المستخدم وكلمة المرور.",
           },
-          newPasswordFillBoth:
-            "يرجى تعبئة حقلي كلمة المرور الجديدة.",
-          newPasswordsDontMatch:
-            "كلمتا المرور الجديدتان غير متطابقتين.",
+          newPasswordFillBoth: "يرجى تعبئة حقلي كلمة المرور الجديدة.",
+          newPasswordsDontMatch: "كلمتا المرور الجديدتان غير متطابقتين.",
           newPasswordTooShort:
             "يجب أن تتكون كلمة المرور الجديدة من 6 أحرف على الأقل.",
           nationalId11IfPresent:
@@ -738,8 +718,7 @@ const resources = {
         sections: {
           aiFeatures: {
             title: "ميزات الذكاء الاصطناعي",
-            help:
-              "يمكنك تفعيل أو إيقاف تلخيص الشكاوى والتوجيه التلقائي إلى الجهة المناسبة.",
+            help: "يمكنك تفعيل أو إيقاف تلخيص الشكاوى والتوجيه التلقائي إلى الجهة المناسبة.",
           },
           thresholds: {
             title: "قيم العتبة",
@@ -747,13 +726,11 @@ const resources = {
           },
           spamRules: {
             title: "قواعد الرسائل المزعجة",
-            help:
-              "حدّد عدد الشكاوى المسموح بها في فترة زمنية لتجنب الإساءة.",
+            help: "حدّد عدد الشكاوى المسموح بها في فترة زمنية لتجنب الإساءة.",
           },
           citizenAccounts: {
             title: "حسابات المواطنين",
-            help:
-              "حدّد ما إذا كان يمكن للمواطنين إنشاء حساب بأنفسهم أم لا.",
+            help: "حدّد ما إذا كان يمكن للمواطنين إنشاء حساب بأنفسهم أم لا.",
           },
         },
         fields: {
@@ -762,23 +739,19 @@ const resources = {
           use_duplicate_detection: "كشف الشكاوى المتشابهة (المكررة)",
           ai_min_confidence: {
             label: "حد ثقة الذكاء الاصطناعي (0–1)",
-            hint:
-              "مثال: 0.6 → إذا كانت الثقة أقل من 60٪ فلن تُستخدم توصية الجهة.",
+            hint: "مثال: 0.6 → إذا كانت الثقة أقل من 60٪ فلن تُستخدم توصية الجهة.",
           },
           similarity_threshold: {
             label: "حد تشابه الشكاوى المكررة (0–1)",
-            hint:
-              "مثال: 0.8 → إذا كان التشابه فوق 80٪ تُعتبر الشكوى مكررة.",
+            hint: "مثال: 0.8 → إذا كان التشابه فوق 80٪ تُعتبر الشكوى مكررة.",
           },
           spam_max_per_day: {
             label: "الحد الأقصى اليومي للشكاوى",
-            hint:
-              "إذا تم تجاوز هذا الحد يُعتبر المستخدم مزعجًا مؤقتًا.",
+            hint: "إذا تم تجاوز هذا الحد يُعتبر المستخدم مزعجًا مؤقتًا.",
           },
           spam_max_per_hour: {
             label: "الحد الأقصى لكل ساعة",
-            hint:
-              "للحد من إرسال عدد كبير من الشكاوى المتتالية في وقت قصير.",
+            hint: "للحد من إرسال عدد كبير من الشكاوى المتتالية في وقت قصير.",
           },
           allow_citizen_registration:
             "السماح للمواطنين بالتسجيل في النظام بأنفسهم",
@@ -834,6 +807,7 @@ const resources = {
       },
       complaints: {
         status: {
+          submitted: "تم الإرسال",
           new: "جديدة",
           inReview: "قيد المراجعة",
           closed: "مغلقة",
@@ -845,16 +819,14 @@ const resources = {
         roleLabel: "الدور:",
         form: {
           title: "نموذج الشكوى",
-          help:
-            "يرجى كتابة المشكلة بوضوح قدر الإمكان باللغة التركية أو العربية.",
+          help: "يرجى كتابة المشكلة بوضوح قدر الإمكان باللغة التركية أو العربية.",
         },
         fields: {
           text: "نص الشكوى",
           department: "اختيار الجهة",
         },
         placeholders: {
-          text:
-            "مثال: أعمدة الإنارة في حيّنا لا تعمل، فيصبح الشارع مظلماً جداً في المساء...",
+          text: "مثال: أعمدة الإنارة في حيّنا لا تعمل، فيصبح الشارع مظلماً جداً في المساء...",
         },
         hints: {
           noAbuse:
@@ -886,8 +858,7 @@ const resources = {
           items: {
             trackStatus:
               "بعد تسجيل الشكوى في النظام يمكنك متابعة حالتها من صفحة {{page}}.",
-            statusFlow:
-              "حالات الشكوى: {{new}} ← {{inReview}} ← {{closed}}.",
+            statusFlow: "حالات الشكوى: {{new}} ← {{inReview}} ← {{closed}}.",
             adminCanRoute:
               "يمكن للمسؤول تحويل شكواك إلى الجهة المختصة والتواصل معك عند الحاجة.",
             aiDuplicates:
@@ -910,8 +881,7 @@ const resources = {
         },
         form: {
           title: "تسجيل الدخول",
-          caption:
-            "سجّل الدخول بحساب المدير أو الموظف أو المواطن.",
+          caption: "سجّل الدخول بحساب المدير أو الموظف أو المواطن.",
         },
         fields: {
           username: "اسم المستخدم",
@@ -930,8 +900,7 @@ const resources = {
           button: "سجّل كمواطن",
         },
         info: {
-          managedAccounts:
-            "يتم إدارة حسابات المواطنين من قِبل نظام البلدية.",
+          managedAccounts: "يتم إدارة حسابات المواطنين من قِبل نظام البلدية.",
         },
         errors: {
           invalidCreds: "اسم المستخدم أو كلمة المرور غير صحيحة.",
@@ -940,8 +909,7 @@ const resources = {
       },
       departments: {
         title: "الوحدات",
-        subtitle:
-          "أضِف، عدّل واحذف الوحدات الخدمية المستخدمة في البلدية.",
+        subtitle: "أضِف، عدّل واحذف الوحدات الخدمية المستخدمة في البلدية.",
         loggedInAs: "المستخدم المسجَّل:",
         roleLabel: "الدور:",
         role: {
@@ -950,11 +918,9 @@ const resources = {
         errors: {
           meLoad: "تعذّر جلب معلومات المستخدم.",
           noAccess: "ليست لديك صلاحية الوصول إلى هذه الصفحة.",
-          noAccessAlert:
-            "هذه الصفحة مخصّصة فقط للمديرين وموظفي البلدية.",
+          noAccessAlert: "هذه الصفحة مخصّصة فقط للمديرين وموظفي البلدية.",
           loadFailed: "تعذّر تحميل الوحدات.",
-          validationNameCodeRequired:
-            "الاسم بالتركية والرمز حقول إلزامية.",
+          validationNameCodeRequired: "الاسم بالتركية والرمز حقول إلزامية.",
           saveFailedWithDetails: "خطأ في الحفظ: {{details}}",
           saveFailed: "تعذّر حفظ الوحدة.",
           deleteFailed: "تعذّر حذف الوحدة.",
@@ -1009,6 +975,7 @@ const resources = {
           loadFailed: "تعذّر تحميل الشكاوى.",
         },
         status: {
+          submitted: "تم الإرسال",
           new: "جديدة",
           in_review: "قيد المراجعة",
           closed: "مغلقة",
@@ -1027,8 +994,7 @@ const resources = {
           },
           waiting: {
             label: "شكاوى قيد الانتظار",
-            hint:
-              'الشكاوى التي حالتها «جديدة» أو «قيد المراجعة».',
+            hint: "الشكاوى التي حالتها «جديدة» أو «قيد المراجعة».",
           },
           aiUsed: {
             label: "شكاوى استخدم فيها الذكاء الاصطناعي",
@@ -1040,8 +1006,7 @@ const resources = {
           },
         },
         table: {
-          searchPlaceholder:
-            "ابحث في النص، اسم المواطن أو اسم الوحدة...",
+          searchPlaceholder: "ابحث في النص، اسم المواطن أو اسم الوحدة...",
           noData: "لا توجد شكاوى للعرض.",
           columns: {
             id: "المعرّف",
@@ -1089,13 +1054,11 @@ const resources = {
           },
           source: {
             label: "المصدر",
-            hint:
-              "معلومة ما إذا كانت الشكوى مكرّرة، أو مصنَّفة آلياً، أو يدوياً.",
+            hint: "معلومة ما إذا كانت الشكوى مكرّرة، أو مصنَّفة آلياً، أو يدوياً.",
           },
           confidence: {
             label: "ثقة النموذج",
-            hint:
-              "نسبة ثقة نموذج الذكاء الاصطناعي في توجيه الشكوى إلى الجهة المناسبة.",
+            hint: "نسبة ثقة نموذج الذكاء الاصطناعي في توجيه الشكوى إلى الجهة المناسبة.",
           },
         },
         readOnly: {
@@ -1121,7 +1084,6 @@ const resources = {
           updateError: "فشل التحديث، يرجى المحاولة مرة أخرى.",
         },
       },
-
     },
   },
 
@@ -1153,7 +1115,6 @@ const resources = {
         loading: "Loading...",
         creating: "Creating...",
       },
-
 
       usersManagement: {
         title: "Users Management",
@@ -1268,12 +1229,9 @@ const resources = {
             fillUsernameAndPassword:
               "Please fill in username and both password fields.",
           },
-          newPasswordFillBoth:
-            "Please fill in both new password fields.",
-          newPasswordsDontMatch:
-            "New passwords do not match.",
-          newPasswordTooShort:
-            "New password must be at least 6 characters.",
+          newPasswordFillBoth: "Please fill in both new password fields.",
+          newPasswordsDontMatch: "New passwords do not match.",
+          newPasswordTooShort: "New password must be at least 6 characters.",
           nationalId11IfPresent:
             "If national ID is provided, it must be 11 digits.",
         },
@@ -1299,23 +1257,19 @@ const resources = {
         sections: {
           aiFeatures: {
             title: "AI features",
-            help:
-              "Enable or disable automatic summarization and routing based on complaint text.",
+            help: "Enable or disable automatic summarization and routing based on complaint text.",
           },
           thresholds: {
             title: "Threshold values",
-            help:
-              "Define how strong the AI decision should be before it is applied.",
+            help: "Define how strong the AI decision should be before it is applied.",
           },
           spamRules: {
             title: "Spam rules",
-            help:
-              "Limit how many complaints a single user can send in a short period.",
+            help: "Limit how many complaints a single user can send in a short period.",
           },
           citizenAccounts: {
             title: "Citizen accounts",
-            help:
-              "Decide whether citizens can create accounts by themselves.",
+            help: "Decide whether citizens can create accounts by themselves.",
           },
         },
         fields: {
@@ -1325,23 +1279,19 @@ const resources = {
           use_duplicate_detection: "Detect similar (duplicate) complaints",
           ai_min_confidence: {
             label: "AI confidence threshold (0–1)",
-            hint:
-              "e.g. 0.6 → if confidence is below 60%, the AI suggestion is ignored.",
+            hint: "e.g. 0.6 → if confidence is below 60%, the AI suggestion is ignored.",
           },
           similarity_threshold: {
             label: "Duplicate similarity threshold (0–1)",
-            hint:
-              "e.g. 0.8 → above 80% similarity is treated as duplicate.",
+            hint: "e.g. 0.8 → above 80% similarity is treated as duplicate.",
           },
           spam_max_per_day: {
             label: "Max complaints per day",
-            hint:
-              "When this limit is exceeded, the user is temporarily treated as spam.",
+            hint: "When this limit is exceeded, the user is temporarily treated as spam.",
           },
           spam_max_per_hour: {
             label: "Max complaints per hour",
-            hint:
-              "Helps prevent very frequent back-to-back complaints.",
+            hint: "Helps prevent very frequent back-to-back complaints.",
           },
           allow_citizen_registration:
             "Allow citizens to register through the system",
@@ -1397,6 +1347,7 @@ const resources = {
       },
       complaints: {
         status: {
+          submitted: "Submitted",
           new: "New",
           inReview: "In review",
           closed: "Closed",
@@ -1408,20 +1359,17 @@ const resources = {
         roleLabel: "Role:",
         form: {
           title: "Complaint form",
-          help:
-            "Please describe the problem as clearly as possible in Turkish or Arabic.",
+          help: "Please describe the problem as clearly as possible in Turkish or Arabic.",
         },
         fields: {
           text: "Complaint text",
           department: "Department selection",
         },
         placeholders: {
-          text:
-            "Example: The street lights in our neighborhood are not working, it gets very dark in the evenings...",
+          text: "Example: The street lights in our neighborhood are not working, it gets very dark in the evenings...",
         },
         hints: {
-          noAbuse:
-            "Please avoid insults, swearing, or sharing personal data.",
+          noAbuse: "Please avoid insults, swearing, or sharing personal data.",
           departmentWithAi:
             "You may leave the department empty; the system will try to route the complaint to the most appropriate unit.",
           departmentWithoutAi:
@@ -1449,8 +1397,7 @@ const resources = {
           items: {
             trackStatus:
               "After your complaint is recorded, you can track its status from the {{page}} page.",
-            statusFlow:
-              "Statuses: {{new}} → {{inReview}} → {{closed}}.",
+            statusFlow: "Statuses: {{new}} → {{inReview}} → {{closed}}.",
             adminCanRoute:
               "An administrator may forward your complaint to the relevant department and contact you if needed.",
             aiDuplicates:
@@ -1473,8 +1420,7 @@ const resources = {
         },
         form: {
           title: "Sign in",
-          caption:
-            "Sign in with your admin, staff, or citizen account.",
+          caption: "Sign in with your admin, staff, or citizen account.",
         },
         fields: {
           username: "Username",
@@ -1572,6 +1518,7 @@ const resources = {
           loadFailed: "Failed to load complaints.",
         },
         status: {
+          submitted: "Submitted",
           new: "New",
           in_review: "In review",
           closed: "Closed",
@@ -1586,7 +1533,8 @@ const resources = {
             staffLabel: "Total complaints",
             citizenLabel: "My total complaints",
             staffHint: "Total number of complaints in the system.",
-            citizenHint: "Number of complaints you submitted with this account.",
+            citizenHint:
+              "Number of complaints you submitted with this account.",
           },
           waiting: {
             label: "Pending complaints",
@@ -1602,8 +1550,7 @@ const resources = {
           },
         },
         table: {
-          searchPlaceholder:
-            "Search by text, citizen or department...",
+          searchPlaceholder: "Search by text, citizen or department...",
           noData: "No complaints to display.",
           columns: {
             id: "ID",
@@ -1639,8 +1586,7 @@ const resources = {
         cards: {
           status: {
             label: "Status",
-            hint:
-              "Processing status of the complaint (New / In review / Closed).",
+            hint: "Processing status of the complaint (New / In review / Closed).",
             createdAt: "Created at:",
             inReviewAt: "Moved to review:",
             closedAt: "Closed at:",
@@ -1648,18 +1594,15 @@ const resources = {
           department: {
             label: "Department",
             unassigned: "Unassigned",
-            hint:
-              "Municipal department / institution to which the complaint is routed.",
+            hint: "Municipal department / institution to which the complaint is routed.",
           },
           source: {
             label: "Source",
-            hint:
-              "Information on whether the complaint is duplicate / AI-classified / manual.",
+            hint: "Information on whether the complaint is duplicate / AI-classified / manual.",
           },
           confidence: {
             label: "Model confidence",
-            hint:
-              "The AI model confidence score for routing the complaint to this department.",
+            hint: "The AI model confidence score for routing the complaint to this department.",
           },
         },
         readOnly: {
@@ -1686,14 +1629,13 @@ const resources = {
           updateError: "Update failed. Please try again.",
         },
       },
-
     },
   },
 };
 
 i18n.use(initReactI18next).init({
   resources,
-  lng: "tr", 
+  lng: "tr",
   fallbackLng: "en",
   interpolation: {
     escapeValue: false,

@@ -73,7 +73,7 @@ export default function ComplaintDetail() {
         console.log(
           "DETAIL LOAD ERROR:",
           e?.response?.status,
-          e?.response?.data
+          e?.response?.data,
         );
         if (e?.response?.status === 404) {
           setErr(t("complaintDetail.errors.notFound"));
@@ -91,6 +91,7 @@ export default function ComplaintDetail() {
   const isStaffView = role === "staff" || role === "manager" || me?.is_staff;
 
   const statusLabel = (status) => {
+    if (status === "submitted") return t("dashboard.status.submitted");
     if (status === "new") return t("dashboard.status.new");
     if (status === "in_review") return t("dashboard.status.in_review");
     if (status === "closed") return t("dashboard.status.closed");
@@ -98,6 +99,7 @@ export default function ComplaintDetail() {
   };
 
   const statusOptions = [
+    { value: "submitted", label: t("dashboard.status.submitted") },
     { value: "new", label: t("dashboard.status.new") },
     { value: "in_review", label: t("dashboard.status.in_review") },
     { value: "closed", label: t("dashboard.status.closed") },
@@ -152,7 +154,7 @@ export default function ComplaintDetail() {
       console.log(
         "DETAIL SAVE ERROR:",
         error?.response?.status,
-        error?.response?.data
+        error?.response?.data,
       );
       setErr(t("complaintDetail.messages.updateError"));
     } finally {
@@ -393,7 +395,7 @@ export default function ComplaintDetail() {
                   value={editForm.summary}
                   onChange={(e) => handleChange("summary", e.target.value)}
                   placeholder={t(
-                    "complaintDetail.edit.fields.summaryPlaceholder"
+                    "complaintDetail.edit.fields.summaryPlaceholder",
                   )}
                 />
               </div>

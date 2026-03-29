@@ -8,6 +8,7 @@ This file is production-ready by default:
 """
 
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -19,7 +20,10 @@ except ImportError:  # optional at local-dev bootstrap
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv()
+# Load env from backend/.env and repo-root/.env
+load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env")
+IS_RUNSERVER = any(arg.startswith("runserver") for arg in sys.argv)
 
 
 def env_bool(name, default=False):
@@ -146,7 +150,7 @@ else:
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.getenv('DB_NAME', 'complaint_db'),
             'USER': os.getenv('DB_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'PASSWORD': os.getenv('DB_PASSWORD', 'root12345'),
             'HOST': os.getenv('DB_HOST', '127.0.0.1'),
             'PORT': os.getenv('DB_PORT', '5432'),
         }
@@ -205,6 +209,11 @@ CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", True)
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
 
 # Security headers for production
+# When running local Django dev server, keep secure cookies off by default
+# even if DEBUG is false, unless env explicitly overrides them.
+default_secure_cookie = not DEBUG and not IS_RUNSERVER
+SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", default_secure_cookie)
+CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", default_secure_cookie)
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_BROWSER_XSS_FILTER = True
@@ -212,7 +221,11 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
 if not DEBUG:
-    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
+    # Keep local runserver usable over HTTP unless explicitly forced from env
+    SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", not IS_RUNSERVER)
+
+    # HSTS should be enabled only in real HTTPS deployments
+    if not IS_RUNSERVER:
+        SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+        SECURE_HSTS_PRELOAD = True

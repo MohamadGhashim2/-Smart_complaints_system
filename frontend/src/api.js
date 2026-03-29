@@ -1,8 +1,33 @@
 import axios from "axios";
 import { getAccess, getRefresh, setTokens, clearTokens } from "./auth";
 
+function normalizeApiBaseUrl(rawBaseUrl) {
+  const trimmed = (rawBaseUrl || "").trim();
+  if (!trimmed) return "";
+
+  let parsed;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return trimmed.replace(/\/$/, "");
+  }
+
+  const isLocalHost = ["localhost", "127.0.0.1", "0.0.0.0"].includes(
+    parsed.hostname
+  );
+
+  // Django runserver المحلي لا يدعم HTTPS افتراضياً
+  if (isLocalHost && parsed.protocol === "https:") {
+    parsed.protocol = "http:";
+  }
+
+  return parsed.toString().replace(/\/$/, "");
+}
+
+const apiBaseUrl = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: apiBaseUrl,
 });
 
 // 1) Attach access token لكل request
@@ -31,11 +56,8 @@ api.interceptors.response.use(
       }
 
       try {
-        // مهم: endpoint غالباً عندك هو /api/auth/token/refresh/
-        const r = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL}/api/auth/token/refresh/`,
-          { refresh }
-        );
+        const refreshPath = "/api/auth/token/refresh/";
+        const r = await axios.post(`${apiBaseUrl}${refreshPath}`, { refresh });
 
         const newAccess = r.data.access;
         setTokens({ access: newAccess, refresh }); // نحدّث access فقط
