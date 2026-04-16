@@ -23,6 +23,8 @@ db.sqlite3
 # Env & secrets (anywhere)
 .env
 */.env
+cloudrun/*.env.yaml
+!cloudrun/*.env.yaml.example
 
 # Node / Frontend (لو اضفت لاحقًا)
 node_modules/

@@ -1,5 +1,5 @@
 // frontend/pages/Dashboard.jsx
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../api";
 import { useNavigate } from "react-router-dom";
 import { clearTokens } from "../auth";
@@ -20,7 +20,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const loadMe = async () => {
+  const loadMe = useCallback(async () => {
     try {
       const res = await api.get("/api/v1/auth/me/");
       setMe(res.data);
@@ -32,9 +32,9 @@ export default function Dashboard() {
         navigate("/");
       }
     }
-  };
+  }, [navigate]);
 
-  const loadComplaints = async () => {
+  const loadComplaints = useCallback(async () => {
     setErr("");
     setLoading(true);
     try {
@@ -54,14 +54,14 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate, t]);
 
   useEffect(() => {
     loadMe();
     loadComplaints();
     const intervalId = setInterval(loadComplaints, 10000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [loadComplaints, loadMe]);
 
   const logout = () => {
     clearTokens();

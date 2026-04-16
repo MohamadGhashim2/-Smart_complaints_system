@@ -1,10 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
-
-const ToastContext = createContext({
-  success: () => {},
-  error: () => {},
-  info: () => {},
-});
+import { useCallback, useMemo, useState } from "react";
+import { ToastContext } from "./toast";
 
 let seq = 1;
 
@@ -41,8 +36,4 @@ export function ToastProvider({ children }) {
       </div>
     </ToastContext.Provider>
   );
-}
-
-export function useToast() {
-  return useContext(ToastContext);
 }

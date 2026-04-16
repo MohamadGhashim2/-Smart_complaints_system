@@ -24,7 +24,10 @@ function normalizeApiBaseUrl(rawBaseUrl) {
   return parsed.toString().replace(/\/$/, "");
 }
 
-const apiBaseUrl = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
+const runtimeConfig = window.__APP_CONFIG__ || {};
+const apiBaseUrl = normalizeApiBaseUrl(
+  runtimeConfig.API_BASE_URL || import.meta.env.VITE_API_BASE_URL
+);
 
 const api = axios.create({
   baseURL: apiBaseUrl,

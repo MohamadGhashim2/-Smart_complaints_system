@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { clearTokens } from "../auth";
 import DataTableModule from "react-data-table-component";
 import { useTranslation } from "react-i18next";
-import { useToast } from "../components/ToastProvider";
+import { useToast } from "../components/toast";
 
 const DataTable = DataTableModule.default || DataTableModule;
 

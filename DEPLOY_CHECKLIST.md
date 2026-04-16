@@ -65,3 +65,13 @@ POST /api/v1/complaints/
 - [ ] Create Render Blueprint from `render.yaml`.
 - [ ] Verify `build.sh` executed successfully.
 - [ ] Open API docs (`/api/docs/`) and health endpoint (`/api/v1/health/`).
+
+## 8) Cloud Run deployment
+
+- [ ] Build and deploy `backend/Dockerfile`.
+- [ ] Store `DJANGO_SECRET_KEY`, `DATABASE_URL`, and `OPENAI_API_KEY` in Secret Manager.
+- [ ] Run database migrations with a Cloud Run Job.
+- [ ] Build and deploy `frontend/Dockerfile`.
+- [ ] Set frontend `API_BASE_URL` to the backend Cloud Run URL.
+- [ ] Set backend `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, and `DJANGO_ALLOWED_HOSTS` to exact Cloud Run domains.
+- [ ] Verify `/api/v1/health/` and `/healthz`.

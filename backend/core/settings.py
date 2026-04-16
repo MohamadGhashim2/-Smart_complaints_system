@@ -24,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 load_dotenv(BASE_DIR.parent / ".env")
 IS_RUNSERVER = any(arg.startswith("runserver") for arg in sys.argv)
+IS_CLOUD_RUN = bool(os.getenv("K_SERVICE"))
 
 
 def env_bool(name, default=False):
@@ -41,7 +42,10 @@ def env_list(name, default=""):
 # SECURITY
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-in-production")
 DEBUG = env_bool("DJANGO_DEBUG", False)
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+default_allowed_hosts = "localhost,127.0.0.1"
+if IS_CLOUD_RUN:
+    default_allowed_hosts = f"{default_allowed_hosts},.run.app"
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default_allowed_hosts)
 
 # Application definition
 
@@ -214,6 +218,9 @@ CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
 default_secure_cookie = not DEBUG and not IS_RUNSERVER
 SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", default_secure_cookie)
 CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", default_secure_cookie)
+
+if env_bool("DJANGO_TRUST_X_FORWARDED_PROTO", IS_CLOUD_RUN):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
